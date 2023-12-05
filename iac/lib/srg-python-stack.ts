@@ -30,12 +30,12 @@ export class SRGPythonStack extends cdk.Stack {
       {
         certificate: acm.Certificate.fromCertificateArn(
           this,
-          'fsh-imported-certificate',
+          'srg-python-imported-certificate',
           props.aws_env.AWS_ACM_CERTIFICATE_ARN
         ),
         cluster: ecs.Cluster.fromClusterAttributes(
           this,
-          'fsh-imported-cluster',
+          'srg-python-imported-cluster',
           {
             securityGroups: [
               ec2.SecurityGroup.fromSecurityGroupId(
@@ -51,7 +51,7 @@ export class SRGPythonStack extends cdk.Stack {
             }),
           }
         ),
-        loadBalancerName: 'fsh-fullstack-hrivnak-alb',
+        loadBalancerName: 'srg-python-alb',
         redirectHTTP: true,
         taskImageOptions: {
           image: ecs.ContainerImage.fromAsset('../'),

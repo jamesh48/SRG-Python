@@ -6,3 +6,38 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - uses: actions/checkout@v3
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - name: Install CDK
+        run: npm install -g aws-cdk
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@master
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: "us-east-1"
+      - name: Deploy to AWS
+        run: |
+          cd iac;
+          npm install;
+          cdk deploy --require-approval=never;
+        env:
+          AWS_ACCOUNT_NUMBER: ${{ vars.AWS_ACCOUNT_NUMBER }}
+          AWS_ACM_CERTIFICATE_ARN: ${{ vars.AWS_ACM_CERTIFICATE_ARN }}
+          AWS_CLUSTER_ARN: ${{ vars.AWS_CLUSTER_ARN }}
+          AWS_DEFAULT_SG: ${{ vars.AWS_DEFAULT_SG }}
+          AWS_VPC_ID: ${{ vars.AWS_VPC_ID }}
+          CDK_REGION: ${{ vars.CDK_REGION }}
+          STRAVA_CLIENT_ID: ${{ vars.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ vars.STRAVA_CLIENT_SECRET }}
