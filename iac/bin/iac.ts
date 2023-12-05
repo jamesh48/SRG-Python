@@ -16,6 +16,10 @@ const {
   STRAVA_CLIENT_SECRET,
 } = process.env;
 
+if (!AWS_ACCOUNT_NUMBER) {
+  throw new Error('AWS_ACCOUNT_NUMBER environment variable is undefined!');
+}
+
 if (!AWS_ACM_CERTIFICATE_ARN) {
   throw new Error('AWS_ACM_CERTIFICATE_ARN environment variable is undefined!');
 }
