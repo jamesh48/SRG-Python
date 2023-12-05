@@ -1,0 +1,8 @@
+# https://dev.to/aws-builders/deploy-to-aws-with-github-actions-and-aws-cdk-4m1e
+name: AWS Service CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
