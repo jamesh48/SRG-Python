@@ -1,0 +1,7 @@
+lib
+include
+bin
+__pycache__
+.env
+pyvenv.cfg
+strava_tokens.json
