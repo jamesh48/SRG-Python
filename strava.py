@@ -10,7 +10,7 @@ load_dotenv(find_dotenv())
 
 app = Flask(__name__)
 
-@app.route('/individualEntry/<entryId>')
+@app.route('/individualEntry/<entryId>', methods=["GET"])
 def individualEntry(entryId):
     try:
         with open('strava_tokens.json') as json_file:
@@ -24,7 +24,7 @@ def individualEntry(entryId):
         print("Exception")
         return 'Individual Entry Fetch Error'
 
-@app.route('/allActivities')
+@app.route('/allActivities', methods=["GET"])
 def data():
     try:
         with open('strava_tokens.json') as json_file:
@@ -34,22 +34,20 @@ def data():
         access_token = strava_tokens['access_token']
         r = requests.get(url + '?access_token=' + access_token)
         r = r.json()
-        pprint(r)
         return r
     except Exception as e:
         print("Exception when calling ActivitiesApi->getLoggedInAthleteActivities: %s\n" % e)
         return 'Fetch All Activities Error'
 
-@app.route('/auth')
+@app.route('/auth', methods=["GET"])
 def auth():
     client_id = os.environ.get("strava_client_id")
     url = "http://www.strava.com/oauth/authorize?client_id=" + client_id + "&response_type=code&redirect_uri=http://127.0.0.1:5000/exchange_token&approval_prompt=force&scope=profile:read_all,activity:read_all"
     return redirect(url, code=302)
 
-@app.route('/exchange_token')
+@app.route('/exchange_token', methods=["GET"])
 def exchange_token():
     code = request.args.get('code')
-    pprint(code)
     try:
         client_id = os.environ.get("strava_client_id")
         client_secret = os.environ.get("strava_client_secret")
