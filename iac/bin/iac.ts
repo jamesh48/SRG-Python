@@ -20,9 +20,13 @@ if (!AWS_ACCOUNT_NUMBER) {
   throw new Error('AWS_ACCOUNT_NUMBER environment variable is undefined!');
 }
 
-if (!AWS_ACM_CERTIFICATE_ARN) {
-  throw new Error('AWS_ACM_CERTIFICATE_ARN environment variable is undefined!');
+if (!CDK_REGION) {
+  throw new Error('CDK_REGION environment variable is undefined!');
 }
+
+// if (!AWS_ACM_CERTIFICATE_ARN) {
+//   throw new Error('AWS_ACM_CERTIFICATE_ARN environment variable is undefined!');
+// }
 
 if (!AWS_CLUSTER_ARN) {
   throw new Error('AWS_CLUSTER_ARN environment variable is undefined!');
