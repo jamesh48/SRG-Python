@@ -40,4 +40,4 @@ jobs:
           AWS_VPC_ID: ${{ vars.AWS_VPC_ID }}
           CDK_REGION: ${{ vars.CDK_REGION }}
           STRAVA_CLIENT_ID: ${{ vars.STRAVA_CLIENT_ID }}
-          STRAVA_CLIENT_SECRET: ${{ vars.STRAVA_CLIENT_SECRET }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}

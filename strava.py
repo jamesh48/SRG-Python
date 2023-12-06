@@ -10,19 +10,22 @@ load_dotenv(find_dotenv())
 
 app = Flask(__name__)
 
+
 @app.route('/individualEntry/<entryId>', methods=["GET"])
 def individualEntry(entryId):
     try:
         with open('strava_tokens.json') as json_file:
             strava_tokens = json.load(json_file)
         access_token = strava_tokens['access_token']
-        url = "https://www.strava.com/api/v3/activities/" + entryId + "include_all_efforts=true"
+        url = "https://www.strava.com/api/v3/activities/" + \
+            entryId + "include_all_efforts=true"
         r = requests.get(url + '?access_token=' + access_token)
         r = r.json()
-        return r
+        return json.dumps(r)
     except Exception as e:
         print("Exception")
-        return 'Individual Entry Fetch Error'
+        return ('<html><style>body { background-color: blue }</style><div>Individual Entry Fetch Error:</div> %s</html>' % e)
+
 
 @app.route('/allActivities', methods=["GET"])
 def data():
@@ -34,16 +37,20 @@ def data():
         access_token = strava_tokens['access_token']
         r = requests.get(url + '?access_token=' + access_token)
         r = r.json()
-        return r
+        return json.dumps(r)
     except Exception as e:
-        print("Exception when calling ActivitiesApi->getLoggedInAthleteActivities: %s\n" % e)
+        print(
+            "Exception when calling ActivitiesApi->getLoggedInAthleteActivities: %s\n" % e)
         return 'Fetch All Activities Error'
+
 
 @app.route('/auth', methods=["GET"])
 def auth():
     client_id = os.environ.get("strava_client_id")
-    url = "http://www.strava.com/oauth/authorize?client_id=" + client_id + "&response_type=code&redirect_uri=http://127.0.0.1:5000/exchange_token&approval_prompt=force&scope=profile:read_all,activity:read_all"
+    url = "http://www.strava.com/oauth/authorize?client_id=" + client_id + \
+        "&response_type=code&redirect_uri=http://127.0.0.1:5000/exchange_token&approval_prompt=force&scope=profile:read_all,activity:read_all"
     return redirect(url, code=302)
+
 
 @app.route('/exchange_token', methods=["GET"])
 def exchange_token():
@@ -67,10 +74,6 @@ def exchange_token():
     except Exception as e:
         return 'authentication error'
 
+
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=5000)
-
-
-
-
-
