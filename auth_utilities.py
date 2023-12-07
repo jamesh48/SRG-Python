@@ -58,10 +58,10 @@ def get_access_token_from_athlete_id():
     now = time.time()
     later = tokens['expiresAt']
 
-    if later < now:
+    if now > later:
         pprint('expired token!')
         access_token = refresh_tokens(athlete_id, tokens['refreshToken'])
         return access_token
     else:
-        pprint('Not Expired!')
+        pprint('Token not yet expired!')
         return tokens['accessToken']
