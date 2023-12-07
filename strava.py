@@ -1,57 +1,17 @@
 from __future__ import print_function
 import os
+import time
 import json
 import requests
 from pprint import pprint
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask, redirect, request, make_response
-import boto3
-from botocore.exceptions import ClientError
+from auth_utilities import upsert_tokens, get_access_token_from_athlete_id
 
 load_dotenv(find_dotenv())
 # https://medium.com/swlh/using-python-to-connect-to-stravas-api-and-analyse-your-activities-dummies-guide-5f49727aac86
 
 app = Flask(__name__)
-
-
-def fetch_tokens(athlete_id, dynamodb=None):
-    dynamodb = boto3.resource('dynamodb')
-    tokens_table = dynamodb.Table('srg-token-table')
-    try:
-        response = tokens_table.get_item(
-            Key={
-                'athleteId': athlete_id
-            },
-        )
-    except ClientError as e:
-        print(e.response['No item found'])
-    else:
-        return response['Item']
-
-
-def upsert_tokens(athlete_id, tokens, dynamodb=None):
-    try:
-        dynamodb = boto3.resource('dynamodb')
-        tokens_table = dynamodb.Table('srg-token-table')
-        response = tokens_table.put_item(
-            Item={
-                "athleteId": athlete_id,
-                "accessToken": tokens['access_token'],
-                "refreshToken": tokens['refresh_token']
-            }
-        )
-
-        return response
-    except Exception as e:
-        pprint(e)
-        return e
-
-
-def get_access_token_from_athlete_id():
-    athlete_id = request.cookies.get('srg_athlete_id')
-    tokens = fetch_tokens(athlete_id)
-    return tokens['accessToken']
-
 
 @app.route('/individualEntry/<entryId>', methods=["GET"])
 def fetch_individual_entry(entryId):
@@ -64,7 +24,7 @@ def fetch_individual_entry(entryId):
         return json.dumps(r)
     except Exception as e:
         print("Exception")
-        return ('<html><style>body { background-color: ivory }</style><div>Individual Entry Fetch Error:</div> %s</html>' % e)
+        return ('<html><style>body { background-color: ivory }</style><div>Individual Entry Fetch Error:</div> <p>%s</p></html>' % e)
 
 
 @app.route('/allActivities', methods=["GET"])
