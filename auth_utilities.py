@@ -12,6 +12,9 @@ auth_controller_bp = Blueprint('auth_controller', __name__)
 
 
 @auth_controller_bp.route('/auth', methods=["GET"])
+def route_auth():
+    return auth();
+
 def auth():
     client_id = os.environ.get("strava_client_id")
     strava_exc_token_redirect_uri = os.environ.get(
@@ -25,6 +28,9 @@ def auth():
 
 
 @auth_controller_bp.route('/exchange_token', methods=["GET"])
+def route_exchange_token():
+    return exchange_token();
+
 def exchange_token():
     code = request.args.get('code')
     try:
@@ -62,6 +68,8 @@ def upsert_tokens(athlete_id, tokens, dynamodb=None):
                 "expiresAt": tokens['expires_at']
             }
         )
+
+        pprint(response)
         return response
     except Exception as e:
         pprint(e)
