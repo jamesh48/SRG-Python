@@ -37,6 +37,7 @@ jobs:
           AWS_ACM_CERTIFICATE_ARN: ${{ vars.AWS_ACM_CERTIFICATE_ARN }}
           AWS_CLUSTER_ARN: ${{ vars.AWS_CLUSTER_ARN }}
           AWS_DEFAULT_SG: ${{ vars.AWS_DEFAULT_SG }}
+          AWS_LOAD_BALANCER_ARN: ${{ vars.AWS_LOAD_BALANCER_ARN }}
           AWS_VPC_ID: ${{ vars.AWS_VPC_ID }}
           CDK_REGION: ${{ vars.CDK_REGION }}
           STRAVA_CLIENT_ID: ${{ vars.STRAVA_CLIENT_ID }}
