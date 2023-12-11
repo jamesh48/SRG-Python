@@ -61,7 +61,11 @@ export class SRGPythonStack extends cdk.Stack {
             ),
           }
         ),
-        cluster: ecs.Cluster.fromClusterArn(this, 'jh-imported-cluster', ''),
+        cluster: ecs.Cluster.fromClusterArn(
+          this,
+          'jh-imported-cluster',
+          'arn:aws:ecs:us-east-1:471507967541:cluster/jh-e1-ecs-cluster'
+        ),
         enableExecuteCommand: true,
       }
     );
