@@ -10,6 +10,7 @@ const {
   AWS_ACM_CERTIFICATE_ARN,
   AWS_CLUSTER_ARN,
   AWS_DEFAULT_SG,
+  AWS_LOAD_BALANCER_ARN,
   AWS_VPC_ID,
   CDK_REGION,
   STRAVA_CLIENT_ID,
@@ -24,9 +25,9 @@ if (!CDK_REGION) {
   throw new Error('CDK_REGION environment variable is undefined!');
 }
 
-// if (!AWS_ACM_CERTIFICATE_ARN) {
-//   throw new Error('AWS_ACM_CERTIFICATE_ARN environment variable is undefined!');
-// }
+if (!AWS_ACM_CERTIFICATE_ARN) {
+  throw new Error('AWS_ACM_CERTIFICATE_ARN environment variable is undefined!');
+}
 
 if (!AWS_CLUSTER_ARN) {
   throw new Error('AWS_CLUSTER_ARN environment variable is undefined!');
@@ -34,6 +35,10 @@ if (!AWS_CLUSTER_ARN) {
 
 if (!AWS_DEFAULT_SG) {
   throw new Error('AWS_DEFAULT_SG environment variable is undefined!');
+}
+
+if (!AWS_LOAD_BALANCER_ARN) {
+  throw new Error('AWS_LOAD_BALANCER_ARN environment variable is undefined!');
 }
 
 if (!AWS_VPC_ID) {
@@ -52,6 +57,7 @@ if (!STRAVA_CLIENT_SECRET) {
 new SRGPythonStack(app, 'SRGPythonStack', {
   aws_env: {
     AWS_ACM_CERTIFICATE_ARN,
+    AWS_LOAD_BALANCER_ARN,
     AWS_CLUSTER_ARN,
     AWS_DEFAULT_SG,
     AWS_VPC_ID,
