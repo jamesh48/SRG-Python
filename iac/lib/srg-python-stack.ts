@@ -128,7 +128,7 @@ export class SRGPythonStack extends cdk.Stack {
       ),
     ]);
     const targetGroup = new ApplicationTargetGroup(this, 'srg-python-tg', {
-      targetGroupName: 'srg-svc-target',
+      // targetGroupName: 'srg-svc-target',
       port: 5000,
       protocol: ApplicationProtocol.HTTP,
       targets: [srgFargateService],
