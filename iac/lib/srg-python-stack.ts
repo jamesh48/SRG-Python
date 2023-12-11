@@ -38,6 +38,7 @@ export class SRGPythonStack extends cdk.Stack {
       this,
       'srg-python-service',
       {
+        assignPublicIp: true,
         desiredCount: 1,
         capacityProviderStrategies: [
           {
