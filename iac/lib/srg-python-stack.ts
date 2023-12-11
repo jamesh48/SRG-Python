@@ -64,7 +64,7 @@ export class SRGPythonStack extends cdk.Stack {
               }
             ),
           // loadBalancerName: 'srg-python-alb',
-          redirectHTTP: true,
+          // redirectHTTP: true,
           taskImageOptions: {
             image: ecs.ContainerImage.fromAsset('../'),
             taskRole: iam.Role.fromRoleName(
