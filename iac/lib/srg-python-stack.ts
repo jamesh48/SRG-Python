@@ -101,7 +101,8 @@ export class SRGPythonStack extends cdk.Stack {
       this,
       'imported-listener',
       {
-        listenerArn: '',
+        listenerArn:
+          'arn:aws:elasticloadbalancing:us-east-1:471507967541:listener/app/fsh-fullstack-hrivnak-alb/8777d6587b6e774f/b74b5b3d1406d6d8',
       }
     );
 
