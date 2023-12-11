@@ -94,15 +94,15 @@ export class SRGPythonStack extends cdk.Stack {
           streamPrefix: 'srgp-container',
           logRetention: RetentionDays.FIVE_DAYS,
         }),
-        healthCheck: {
-          command: [
-            'CMD-SHELL',
-            'curl -f http://127.0.0.1:5000/healthcheck || exit 1',
-          ],
-          interval: cdk.Duration.seconds(30),
-          timeout: cdk.Duration.seconds(10),
-          retries: 5,
-        },
+        // healthCheck: {
+        //   command: [
+        //     'CMD-SHELL',
+        //     'curl -f http://127.0.0.1:5000/healthcheck || exit 1',
+        //   ],
+        //   interval: cdk.Duration.seconds(30),
+        //   timeout: cdk.Duration.seconds(10),
+        //   retries: 5,
+        // },
       }
     );
 
