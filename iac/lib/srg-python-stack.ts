@@ -8,7 +8,13 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 import { Construct } from 'constructs';
 import { aws_elasticloadbalancingv2 } from 'aws-cdk-lib';
-import { ListenerAction } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import {
+  ApplicationListener,
+  ApplicationProtocol,
+  ListenerAction,
+  Protocol,
+} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 interface SRGPythonStackProps extends cdk.StackProps {
   aws_env: {
@@ -28,46 +34,21 @@ export class SRGPythonStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SRGPythonStackProps) {
     super(scope, id, props);
 
-    const srgPythonService =
-      new ecsPatterns.ApplicationLoadBalancedFargateService(
-        this,
-        'srg-python-alb',
-        {
-          certificate: acm.Certificate.fromCertificateArn(
-            this,
-            'srg-python-imported-certificate',
-            props.aws_env.AWS_ACM_CERTIFICATE_ARN
-          ),
-          cluster: ecs.Cluster.fromClusterAttributes(
-            this,
-            'srg-python-imported-cluster',
-            {
-              securityGroups: [
-                ec2.SecurityGroup.fromSecurityGroupId(
-                  this,
-                  'imported-default-sg',
-                  props.aws_env.AWS_DEFAULT_SG
-                ),
-              ],
-              clusterName: 'jh-e1-ecs-cluster',
-              clusterArn: props.aws_env.AWS_CLUSTER_ARN,
-              vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc', {
-                vpcId: props.aws_env.AWS_VPC_ID,
-              }),
-            }
-          ),
-          loadBalancer:
-            aws_elasticloadbalancingv2.ApplicationLoadBalancer.fromLookup(
-              this,
-              'srg-python-alb-imported',
-              {
-                loadBalancerArn: props.aws_env.AWS_LOAD_BALANCER_ARN,
-              }
-            ),
-          // loadBalancerName: 'srg-python-alb',
-          // redirectHTTP: true,
-          taskImageOptions: {
-            image: ecs.ContainerImage.fromAsset('../'),
+    const srgFargateService = new ecs.FargateService(
+      this,
+      'srg-python-service',
+      {
+        desiredCount: 1,
+        capacityProviderStrategies: [
+          {
+            capacityProvider: 'FARGATE_SPOT',
+            weight: 1,
+          },
+        ],
+        taskDefinition: new ecs.FargateTaskDefinition(
+          this,
+          'srg-python-task-definition',
+          {
             taskRole: iam.Role.fromRoleName(
               this,
               'jh-ecs-task-definition-role',
@@ -78,31 +59,71 @@ export class SRGPythonStack extends cdk.Stack {
               'jh-ecs-task-execution-role',
               'jh-ecs-task-execution-role'
             ),
-            environment: {
-              strava_client_id: props.svc_env.STRAVA_CLIENT_ID,
-              strava_client_secret: props.svc_env.STRAVA_CLIENT_SECRET,
-            },
-          },
-          capacityProviderStrategies: [
-            {
-              capacityProvider: 'FARGATE_SPOT',
-              weight: 1,
-            },
-          ],
-          desiredCount: 1,
-          enableExecuteCommand: true,
-        }
-      );
+          }
+        ),
+        cluster: ecs.Cluster.fromClusterArn(this, 'jh-imported-cluster', ''),
+        enableExecuteCommand: true,
+      }
+    );
 
-    srgPythonService.listener.addAction('FixedResponse', {
-      priority: 10,
+    const container = srgFargateService.taskDefinition.addContainer(
+      'srgPython-container',
+      {
+        environment: {
+          strava_client_id: props.svc_env.STRAVA_CLIENT_ID,
+          strava_client_secret: props.svc_env.STRAVA_CLIENT_SECRET,
+          strava_exc_token_redirect_uri:
+            'https://data.stravareportgenerator.app',
+        },
+        image: ecs.ContainerImage.fromAsset('../'),
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: 'srgp-container',
+          logRetention: RetentionDays.FIVE_DAYS,
+        }),
+        healthCheck: {
+          command: [
+            'CMD-SHELL',
+            'curl -f http://127.0.0.1:5000/healthcheck || exit 1',
+          ],
+          interval: cdk.Duration.seconds(30),
+          timeout: cdk.Duration.seconds(10),
+          retries: 5,
+        },
+      }
+    );
+
+    container.addPortMappings({
+      containerPort: 5000,
+      hostPort: 5000,
+    });
+
+    const albListener = ApplicationListener.fromLookup(
+      this,
+      'imported-listener',
+      {
+        listenerArn: '',
+      }
+    );
+
+    albListener.addCertificates('srg-certificate', [
+      acm.Certificate.fromCertificateArn(
+        this,
+        'srg-python-imported-certificate',
+        props.aws_env.AWS_ACM_CERTIFICATE_ARN
+      ),
+    ]);
+
+    albListener.addTargets('srg-python', {
+      targetGroupName: 'srg-svc-target',
+      port: 5000,
+      protocol: ApplicationProtocol.HTTPS,
+      targets: [srgFargateService],
       conditions: [
-        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/ok']),
+        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([
+          '/healthcheck',
+          '/auth',
+        ]),
       ],
-      action: aws_elasticloadbalancingv2.ListenerAction.fixedResponse(200, {
-        contentType: 'text/plain',
-        messageBody: 'OK',
-      }),
     });
 
     new dynamodb.Table(this, 'srg-token-table', {
