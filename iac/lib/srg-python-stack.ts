@@ -130,11 +130,20 @@ export class SRGPythonStack extends cdk.Stack {
     const targetGroup = new ApplicationTargetGroup(this, 'srg-python-tg', {
       targetGroupName: 'srg-svc-target',
       port: 5000,
-      protocol: ApplicationProtocol.HTTPS,
+      protocol: ApplicationProtocol.HTTP,
       targets: [srgFargateService],
       vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg', {
         vpcId: props.aws_env.AWS_VPC_ID,
       }),
+      healthCheck: {
+        path: '/healthcheck',
+        unhealthyThresholdCount: 2,
+        healthyHttpCodes: '200',
+        healthyThresholdCount: 5,
+        interval: cdk.Duration.seconds(30),
+        port: '5000',
+        timeout: cdk.Duration.seconds(10),
+      },
     });
 
     albListener.addTargetGroups('srg-listener-tg', {
