@@ -11,8 +11,6 @@ import { aws_elasticloadbalancingv2 } from 'aws-cdk-lib';
 import {
   ApplicationListener,
   ApplicationProtocol,
-  ListenerAction,
-  Protocol,
 } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
@@ -61,11 +59,20 @@ export class SRGPythonStack extends cdk.Stack {
             ),
           }
         ),
-        cluster: ecs.Cluster.fromClusterArn(
-          this,
-          'jh-imported-cluster',
-          'arn:aws:ecs:us-east-1:471507967541:cluster/jh-e1-ecs-cluster'
-        ),
+        cluster: ecs.Cluster.fromClusterAttributes(this, 'jh-impoted-cluster', {
+          securityGroups: [
+            ec2.SecurityGroup.fromSecurityGroupId(
+              this,
+              'imported-default-sg',
+              props.aws_env.AWS_DEFAULT_SG
+            ),
+          ],
+          clusterName: 'jh-e1-ecs-cluster',
+          clusterArn: props.aws_env.AWS_CLUSTER_ARN,
+          vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc', {
+            vpcId: props.aws_env.AWS_VPC_ID,
+          }),
+        }),
         enableExecuteCommand: true,
       }
     );
