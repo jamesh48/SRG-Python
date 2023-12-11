@@ -8,6 +8,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 import { Construct } from 'constructs';
 import { aws_elasticloadbalancingv2 } from 'aws-cdk-lib';
+import { ListenerAction } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface SRGPythonStackProps extends cdk.StackProps {
   aws_env: {
@@ -92,6 +93,17 @@ export class SRGPythonStack extends cdk.Stack {
           enableExecuteCommand: true,
         }
       );
+
+    srgPythonService.listener.addAction('FixedResponse', {
+      priority: 10,
+      conditions: [
+        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/ok']),
+      ],
+      action: aws_elasticloadbalancingv2.ListenerAction.fixedResponse(200, {
+        contentType: 'text/plain',
+        messageBody: 'OK',
+      }),
+    });
 
     new dynamodb.Table(this, 'srg-token-table', {
       tableName: 'srg-token-table',
