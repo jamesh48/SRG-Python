@@ -131,7 +131,7 @@ export class SRGPythonStack extends cdk.Stack {
       port: 5000,
       protocol: ApplicationProtocol.HTTPS,
       targets: [srgFargateService],
-      vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc', {
+      vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg', {
         vpcId: props.aws_env.AWS_VPC_ID,
       }),
     });
