@@ -12,7 +12,7 @@ app.register_blueprint(data_controller_bp)
 app.register_blueprint(auth_controller_bp)
 
 
-@app.route('/healthcheck', methods=["GET"])
+@app.route('/srg/healthcheck', methods=["GET"])
 def return_healthy():
     return 'healthy!'
 

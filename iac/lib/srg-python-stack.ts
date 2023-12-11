@@ -150,10 +150,7 @@ export class SRGPythonStack extends cdk.Stack {
       targetGroups: [targetGroup],
       priority: 10,
       conditions: [
-        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([
-          '/healthcheck',
-          '/auth',
-        ]),
+        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/srg/*']),
       ],
     });
 

@@ -11,9 +11,10 @@ from flask import Blueprint
 auth_controller_bp = Blueprint('auth_controller', __name__)
 
 
-@auth_controller_bp.route('/auth', methods=["GET"])
+@auth_controller_bp.route('/srg/auth', methods=["GET"])
 def route_auth():
-    return auth();
+    return auth()
+
 
 def auth():
     client_id = os.environ.get("strava_client_id")
@@ -23,13 +24,14 @@ def auth():
 
     url = "http://www.strava.com/oauth/authorize?client_id=" + client_id + \
         "&response_type=code&redirect_uri=" + strava_exc_token_redirect_uri + \
-        "/exchange_token&approval_prompt=force&scope=profile:read_all,activity:read_all"
+        "/srg/exchange_token&approval_prompt=force&scope=profile:read_all,activity:read_all"
     return redirect(url, code=302)
 
 
-@auth_controller_bp.route('/exchange_token', methods=["GET"])
+@auth_controller_bp.route('/srg/exchange_token', methods=["GET"])
 def route_exchange_token():
-    return exchange_token();
+    return exchange_token()
+
 
 def exchange_token():
     code = request.args.get('code')
