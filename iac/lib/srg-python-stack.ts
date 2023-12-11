@@ -135,6 +135,7 @@ export class SRGPythonStack extends cdk.Stack {
 
     albListener.addTargetGroups('srg-listener-tg', {
       targetGroups: [targetGroup],
+      priority: 10,
       conditions: [
         aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([
           '/healthcheck',
