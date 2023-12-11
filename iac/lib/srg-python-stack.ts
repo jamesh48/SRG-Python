@@ -11,6 +11,8 @@ import { aws_elasticloadbalancingv2 } from 'aws-cdk-lib';
 import {
   ApplicationListener,
   ApplicationProtocol,
+  ApplicationTargetGroup,
+  TargetGroupBase,
 } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
@@ -124,12 +126,15 @@ export class SRGPythonStack extends cdk.Stack {
         props.aws_env.AWS_ACM_CERTIFICATE_ARN
       ),
     ]);
-
-    albListener.addTargets('srg-python', {
+    const targetGroup = new ApplicationTargetGroup(this, 'srg-python-tg', {
       targetGroupName: 'srg-svc-target',
       port: 5000,
       protocol: ApplicationProtocol.HTTPS,
       targets: [srgFargateService],
+    });
+
+    albListener.addTargetGroups('srg-listener-tg', {
+      targetGroups: [targetGroup],
       conditions: [
         aws_elasticloadbalancingv2.ListenerCondition.pathPatterns([
           '/healthcheck',
