@@ -136,7 +136,7 @@ export class SRGPythonStack extends cdk.Stack {
         vpcId: props.aws_env.AWS_VPC_ID,
       }),
       healthCheck: {
-        path: '/healthcheck',
+        path: '/srg/healthcheck',
         unhealthyThresholdCount: 2,
         healthyHttpCodes: '200',
         healthyThresholdCount: 5,
