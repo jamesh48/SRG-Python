@@ -27,6 +27,8 @@ jobs:
         run: |
           pip install pytest moto
           pytest test_strava.py
+        env:
+          AWS_REGION: ${{ vars.CDK_REGION }}
   deploy:
     needs: test
     runs-on: ubuntu-latest
