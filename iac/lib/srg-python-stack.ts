@@ -12,7 +12,6 @@ import {
   ApplicationListener,
   ApplicationProtocol,
   ApplicationTargetGroup,
-  TargetGroupBase,
 } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
@@ -27,6 +26,7 @@ interface SRGPythonStackProps extends cdk.StackProps {
   svc_env: {
     STRAVA_CLIENT_ID: string;
     STRAVA_CLIENT_SECRET: string;
+    STRAVA_EXC_TOKEN_REDIRECT_URI: string;
   };
 }
 
@@ -87,7 +87,7 @@ export class SRGPythonStack extends cdk.Stack {
           strava_client_id: props.svc_env.STRAVA_CLIENT_ID,
           strava_client_secret: props.svc_env.STRAVA_CLIENT_SECRET,
           strava_exc_token_redirect_uri:
-            'https://data.stravareportgenerator.app',
+            props.svc_env.STRAVA_EXC_TOKEN_REDIRECT_URI,
         },
         image: ecs.ContainerImage.fromAsset('../'),
         logging: new ecs.AwsLogDriver({

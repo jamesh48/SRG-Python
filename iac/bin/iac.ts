@@ -15,6 +15,7 @@ const {
   CDK_REGION,
   STRAVA_CLIENT_ID,
   STRAVA_CLIENT_SECRET,
+  STRAVA_EXC_TOKEN_REDIRECT_URI,
 } = process.env;
 
 if (!AWS_ACCOUNT_NUMBER) {
@@ -54,6 +55,12 @@ if (!STRAVA_CLIENT_SECRET) {
   throw new Error('STRAVA_CLIENT_SECRET environment variable is undefined!');
 }
 
+if (!STRAVA_EXC_TOKEN_REDIRECT_URI) {
+  throw new Error(
+    'STRAVA_EXC_TOKEN_REDIRECT_URI environment variable is undefined!'
+  );
+}
+
 new SRGPythonStack(app, 'SRGPythonStack', {
   aws_env: {
     AWS_ACM_CERTIFICATE_ARN,
@@ -65,6 +72,7 @@ new SRGPythonStack(app, 'SRGPythonStack', {
   svc_env: {
     STRAVA_CLIENT_ID,
     STRAVA_CLIENT_SECRET,
+    STRAVA_EXC_TOKEN_REDIRECT_URI,
   },
   env: {
     account: AWS_ACCOUNT_NUMBER,
