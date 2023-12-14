@@ -29,6 +29,7 @@ def fetch_individual_entry(entryId):
         return ('<html><style>body { background-color: ivory }</style><div>Individual Entry Fetch Error:</div> <p>%s</p></html>' % e)
 
 
+####### All Activities #######
 @data_controller_bp.route('/srg/allActivities', methods=["GET"])
 def route_fetch_all_activities():
     return fetch_all_activities()
@@ -36,7 +37,7 @@ def route_fetch_all_activities():
 
 def fetch_all_activities_req(access_token):
     url = "https://www.strava.com/api/v3/activities"
-    r = requests.get(url + '?access_token=' + access_token)
+    r = requests.get(url + '?access_token=' + access_token, params={ 'page': 1, 'per_page': 200 })
     r = r.json()
     return json.dumps(r)
 
@@ -48,4 +49,4 @@ def fetch_all_activities():
     except Exception as e:
         print(
             "Exception when calling ActivitiesApi -> getLoggedInAthleteActivities: %s\n" % e)
-        return 'Fetch All Activities Error'
+        return ('Fetch All Activities Error: %s\n' % e)
