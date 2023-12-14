@@ -35,17 +35,21 @@ def route_fetch_all_activities():
     return fetch_all_activities()
 
 
-def fetch_all_activities_req(access_token):
+def fetch_all_activities_req(access_token, page):
     url = "https://www.strava.com/api/v3/activities"
-    r = requests.get(url + '?access_token=' + access_token, params={ 'page': 1, 'per_page': 200 })
+    r = requests.get(url + '?access_token=' + access_token, params={ 'page': page, 'per_page': 200 })
     r = r.json()
-    return json.dumps(r)
+
+    if len(r) == 200:
+      return r + fetch_all_activities_req(access_token, page + 1)
+    return r
 
 
 def fetch_all_activities():
     try:
         access_token = get_access_token_from_athlete_id()
-        return fetch_all_activities_req(access_token)
+        r = fetch_all_activities_req(access_token, 1)
+        return json.dumps(r)
     except Exception as e:
         print(
             "Exception when calling ActivitiesApi -> getLoggedInAthleteActivities: %s\n" % e)

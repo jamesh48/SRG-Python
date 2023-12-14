@@ -51,8 +51,8 @@ def exchange_token():
             'refresh_token': strava_tokens['refresh_token']
         }
         upsert_tokens(athlete_id, tokens)
-        response = make_response(redirect('https://stravareportgenerator.app'))
         response.set_cookie('srg_athlete_id', athlete_id)
+        response = make_response(redirect('https://stravareportgenerator.app'))
         return response
     except Exception as e:
         return 'authentication error'
@@ -102,7 +102,8 @@ def fetch_tokens(athlete_id, dynamodb=None):
             },
         )
     except ClientError as e:
-        print(e.response['No item found'])
+        print(e.response[os.environ.get("AWS_REGION")])
+        # print(e.response['No item found'])
     else:
         return response['Item']
 
