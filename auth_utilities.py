@@ -51,10 +51,12 @@ def exchange_token():
             'refresh_token': strava_tokens['refresh_token']
         }
         upsert_tokens(athlete_id, tokens)
-        response.set_cookie('srg_athlete_id', athlete_id)
         response = make_response(redirect('https://stravareportgenerator.app'))
+        # set_cookie comes after make_response
+        response.set_cookie('srg_athlete_id', athlete_id)
         return response
     except Exception as e:
+        pprint(e)
         return 'authentication error'
 
 
@@ -104,7 +106,7 @@ def fetch_tokens(athlete_id, dynamodb=None):
     if 'Item' in response:
         return response['Item']
     else:
-        raise ClientError({'Error': {'Message': 'No athlete_id token found'}}, 'Get All Activities')
+        raise ClientError({ 'Error': { 'Message': 'No athlete_id token found' }}, 'fetch_tokens')
 
 def get_access_token_from_athlete_id():
     athlete_id = request.cookies.get('srg_athlete_id')
