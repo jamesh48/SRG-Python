@@ -93,20 +93,18 @@ def refresh_tokens(athlete_id, refresh_token):
 
 
 def fetch_tokens(athlete_id, dynamodb=None):
+    print(os.environ.get('AWS_REGION'))
     dynamodb = boto3.resource('dynamodb')
     tokens_table = dynamodb.Table('srg-token-table')
-    try:
-        response = tokens_table.get_item(
-            Key={
-                'athleteId': athlete_id
-            },
-        )
-    except ClientError as e:
-        print(e.response[os.environ.get("AWS_REGION")])
-        # print(e.response['No item found'])
-    else:
+    response = tokens_table.get_item(
+        Key={
+            'athleteId': athlete_id
+        },
+    )
+    if 'Item' in response:
         return response['Item']
-
+    else:
+        raise ClientError({'Error': {'Message': 'No athlete_id token found'}}, 'Get All Activities')
 
 def get_access_token_from_athlete_id():
     athlete_id = request.cookies.get('srg_athlete_id')
