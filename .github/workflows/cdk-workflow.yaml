@@ -1,4 +1,3 @@
-# https://dev.to/aws-builders/deploy-to-aws-with-github-actions-and-aws-cdk-4m1e
 name: AWS Service CI/CD
 
 on:
@@ -29,6 +28,7 @@ jobs:
           pytest test_strava.py
         env:
           AWS_DEFAULT_REGION: ${{ vars.CDK_REGION }}
+  # https://dev.to/aws-builders/deploy-to-aws-with-github-actions-and-aws-cdk-4m1e
   deploy:
     needs: test
     runs-on: ubuntu-latest
