@@ -42,3 +42,4 @@ jobs:
           CDK_REGION: ${{ vars.CDK_REGION }}
           STRAVA_CLIENT_ID: ${{ vars.STRAVA_CLIENT_ID }}
           STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          STRAVA_EXC_TOKEN_REDIRECT_URI: ${{ vars.STRAVA_EXC_TOKEN_REDIRECT_URI }}
