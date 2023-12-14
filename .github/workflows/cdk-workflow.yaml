@@ -25,9 +25,10 @@ jobs:
           pip install -r requirements.txt
       - name: Test with pytest
         run: |
-          pip install pytest pytest-cov
-          pytest test_strava.py --doctest-modules
+          pip install pytest
+          pytest test_strava.py
   deploy:
+    dependencies: [test]
     runs-on: ubuntu-latest
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
