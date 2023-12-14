@@ -32,8 +32,11 @@ def fetch_individual_entry(entryId):
 ####### All Activities #######
 @data_controller_bp.route('/srg/allActivities', methods=["GET"])
 def route_fetch_all_activities():
-    return fetch_all_activities()
-
+    try:
+      return fetch_all_activities()
+    except Exception as e:
+      print("Exception when calling ActivitiesApi -> getLoggedInAthleteActivities: %s\n" % e)
+      return ('Fetch All Activities Error: %s\n' % e)
 
 def fetch_all_activities_req(access_token, page):
     url = "https://www.strava.com/api/v3/activities"
@@ -46,11 +49,6 @@ def fetch_all_activities_req(access_token, page):
 
 
 def fetch_all_activities():
-    try:
-        access_token = get_access_token_from_athlete_id()
-        r = fetch_all_activities_req(access_token, 1)
-        return json.dumps(r)
-    except Exception as e:
-        print(
-            "Exception when calling ActivitiesApi -> getLoggedInAthleteActivities: %s\n" % e)
-        return ('Fetch All Activities Error: %s\n' % e)
+  access_token = get_access_token_from_athlete_id()
+  r = fetch_all_activities_req(access_token, 1)
+  return json.dumps(r)

@@ -86,8 +86,7 @@ def mocked_requests_get(*args, **kwargs):
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_all_activities(self):
-    all_activities = fetch_all_activities_req('123456789')
-    all_activities = json.loads(all_activities)
+    all_activities = fetch_all_activities_req('123456789', 1)
     assert "resource_state" in all_activities[0]
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
