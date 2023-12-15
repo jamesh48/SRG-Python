@@ -91,7 +91,7 @@ def refresh_tokens(athlete_id, refresh_token):
     return tokens['access_token']
 
 
-def fetch_tokens(athlete_id, dynamodb=None):
+def fetch_tokens(athlete_id):
     print(os.environ.get('AWS_REGION'))
     dynamodb = boto3.resource('dynamodb')
     tokens_table = dynamodb.Table('srg-token-table')

@@ -16,7 +16,7 @@ def create_token_table():
         AttributeDefinitions=[{ 'AttributeName': 'athleteId','AttributeType': 'S' }],
         BillingMode='PAY_PER_REQUEST'
       )
-  return table, dynamodb
+  return table
 
 def create_activities_table():
   dynamodb = boto3.resource('dynamodb')
@@ -33,7 +33,7 @@ def create_activities_table():
                   ],
         BillingMode='PAY_PER_REQUEST'
       )
-  return table, dynamodb
+  return table
 
 def mocked_requests_get(*args, **kwargs):
     class MockResponse:
@@ -102,21 +102,22 @@ def mocked_requests_get(*args, **kwargs):
     return MockResponse(None, 404)
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
-def test_fetch_all_activities(self):
+def test_fetch_all_strava_activities(self):
     all_activities = fetch_all_activities_strava_req('123456789', 1)
     print(all_activities[0])
     assert "resource_state" in all_activities[0]
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
-def test_fetch_individual_entry(self):
+def test_fetch_individual_entry_from_strava(self):
     individual_entry = fetch_individual_entry_req('12345', '24680')
     individual_entry = json.loads(individual_entry)
     assert "resource_state" in individual_entry
 
 
+###### Tests! ######
 @mock_dynamodb
-def test_fetch_all_activities():
-    table, dynamodb = create_activities_table()
+def test_fetch_all_activities_same_user():
+    table = create_activities_table()
     table.put_item(
         Item={
             'athleteId': '123456789',
@@ -138,11 +139,37 @@ def test_fetch_all_activities():
     assert 'activityId' in activities[1]
     assert activities[0]['activityId'] != activities[1]['activityId']
 
+@mock_dynamodb
+def test_fetch_all_activities_different_users():
+    table = create_activities_table()
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'activityId': '987654321'
+        }
+    )
+
+    table.put_item(
+        Item={
+            'athleteId': '987654321',
+            'activityId': '123456789'
+        }
+    )
+    user_one_activities = fetch_all_activities_req('123456789')
+    user_two_activities = fetch_all_activities_req('987654321')
+
+    # Assertions
+    assert len(user_one_activities) == 1
+    assert 'activityId' in user_one_activities[0]
+
+    assert len(user_two_activities) == 1
+    assert 'activityId' in user_two_activities[0]
+
 
 
 @mock_dynamodb
 def test_fetch_tokens():
-    table, dynamodb = create_token_table()
+    table = create_token_table()
     table.put_item(
        Item={
        'athleteId': '123456789',
@@ -150,7 +177,7 @@ def test_fetch_tokens():
        'refreshToken': '24680'
        }
     )
-    tokens = fetch_tokens('123456789', dynamodb)
+    tokens = fetch_tokens('123456789')
 
     assert "athleteId" in tokens
     assert "accessToken" in tokens
