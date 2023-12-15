@@ -5,7 +5,7 @@ from pprint import pprint
 from auth_utilities import fetch_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_req, fetch_individual_entry_req
+from data_utilities import fetch_all_activities_strava_req, fetch_individual_entry_req
 
 def create_token_table():
   dynamodb = boto3.resource('dynamodb')
@@ -86,7 +86,8 @@ def mocked_requests_get(*args, **kwargs):
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_all_activities(self):
-    all_activities = fetch_all_activities_req('123456789', 1)
+    all_activities = fetch_all_activities_strava_req('123456789', 1)
+    print(all_activities[0])
     assert "resource_state" in all_activities[0]
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
