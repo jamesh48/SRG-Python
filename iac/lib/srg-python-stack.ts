@@ -116,17 +116,10 @@ export class SRGPythonStack extends cdk.Stack {
       'imported-listener',
       {
         listenerArn:
-          'arn:aws:elasticloadbalancing:us-east-1:471507967541:listener/app/fsh-fullstack-hrivnak-alb/8777d6587b6e774f/b74b5b3d1406d6d8',
+          'arn:aws:elasticloadbalancing:us-east-1:471507967541:listener/app/jh-alb/5927623bf7b387b8/202d118fecee2aa5',
       }
     );
 
-    albListener.addCertificates('srg-certificate', [
-      acm.Certificate.fromCertificateArn(
-        this,
-        'srg-python-imported-certificate',
-        props.aws_env.AWS_ACM_CERTIFICATE_ARN
-      ),
-    ]);
     const targetGroup = new ApplicationTargetGroup(this, 'srg-python-tg', {
       // targetGroupName: 'srg-svc-target',
       port: 5000,
@@ -148,7 +141,7 @@ export class SRGPythonStack extends cdk.Stack {
 
     albListener.addTargetGroups('srg-listener-tg', {
       targetGroups: [targetGroup],
-      priority: 10,
+      priority: 20,
       conditions: [
         aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/srg/*']),
       ],
