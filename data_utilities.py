@@ -52,3 +52,26 @@ def fetch_all_activities():
   access_token = get_access_token_from_athlete_id()
   r = fetch_all_activities_req(access_token, 1)
   return json.dumps(r)
+
+###### Get Logged In User ######
+@data_controller_bp.route('/srg/getLoggedInUser', methods=["GET"])
+def route_get_logged_in_user():
+   try:
+      return get_logged_in_user()
+   except Exception as e:
+      print(e)
+      return 'error'
+
+def get_logged_in_user():
+   access_token = get_access_token_from_athlete_id()
+   r = get_logged_in_user_req(access_token)
+   return json.dumps(r)
+
+def get_logged_in_user_req(access_token):
+  url = "https://www.strava.com/api/v3/athlete"
+  r = requests.get(url + '?access_token=' + access_token, params={'scope': 'activity:read_all'})
+  r = r.json()
+  return r
+
+
+
