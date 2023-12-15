@@ -7,7 +7,6 @@ const app = new cdk.App();
 
 const {
   AWS_ACCOUNT_NUMBER,
-  AWS_ACM_CERTIFICATE_ARN,
   AWS_CLUSTER_ARN,
   AWS_DEFAULT_SG,
   AWS_LOAD_BALANCER_ARN,
@@ -24,10 +23,6 @@ if (!AWS_ACCOUNT_NUMBER) {
 
 if (!CDK_REGION) {
   throw new Error('CDK_REGION environment variable is undefined!');
-}
-
-if (!AWS_ACM_CERTIFICATE_ARN) {
-  throw new Error('AWS_ACM_CERTIFICATE_ARN environment variable is undefined!');
 }
 
 if (!AWS_CLUSTER_ARN) {
@@ -63,7 +58,6 @@ if (!STRAVA_EXC_TOKEN_REDIRECT_URI) {
 
 new SRGPythonStack(app, 'SRGPythonStack', {
   aws_env: {
-    AWS_ACM_CERTIFICATE_ARN,
     AWS_LOAD_BALANCER_ARN,
     AWS_CLUSTER_ARN,
     AWS_DEFAULT_SG,

@@ -9,7 +9,6 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 interface SRGPythonStackProps extends cdk.StackProps {
   aws_env: {
-    AWS_ACM_CERTIFICATE_ARN: string;
     AWS_CLUSTER_ARN: string;
     AWS_DEFAULT_SG: string;
     AWS_LOAD_BALANCER_ARN: string;
@@ -130,10 +129,7 @@ export class SRGPythonStack extends cdk.Stack {
       targetGroups: [targetGroup],
       priority: 20,
       conditions: [
-        elbv2.ListenerCondition.hostHeaders([
-          '*.stravareportgenerator.com',
-          'stravareportgenerator.com',
-        ]),
+        elbv2.ListenerCondition.hostHeaders(['data.stravareportgenerator.com']),
         elbv2.ListenerCondition.pathPatterns(['/', '/srg/*']),
       ],
     });
