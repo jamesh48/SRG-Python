@@ -53,7 +53,6 @@ def fetch_all_activities_strava_req(access_token, page):
 def fetch_all_activities_req(srg_athlete_id):
   dynamodb = boto3.resource('dynamodb')
   activities_table = dynamodb.Table('srg-activities-table')
-
   response = activities_table.query(
       KeyConditionExpression="#athlete_id = :athlete_id",
       ExpressionAttributeNames={
@@ -63,7 +62,6 @@ def fetch_all_activities_req(srg_athlete_id):
           ":athlete_id": srg_athlete_id,
       }
   )
-
   return response['Items']
 
 
@@ -71,7 +69,7 @@ def fetch_all_activities_req(srg_athlete_id):
 def fetch_all_activities():
   srg_athlete_id = request.args.get('srg_athlete_id')
   r = fetch_all_activities_req(srg_athlete_id)
-  return json.dumps(r)
+  return r
 
 ###### Get Logged In User ######
 @data_controller_bp.route('/srg/getLoggedInUser', methods=["GET"])
@@ -120,13 +118,11 @@ def route_add_all_activities():
 def add_all_activities():
    srg_athlete_id = request.args.get('srg_athlete_id')
    access_token = get_access_token_from_athlete_id(srg_athlete_id)
-
    activities_to_return = add_all_activities_req(access_token)
-
    return activities_to_return
 
 def add_all_activities_req(access_token):
-  activities_to_add = fetch_all_activities_req(access_token, 3)
+  activities_to_add = fetch_all_activities_strava_req(access_token, 1)
   # Sort and Filter Activities
   activities_to_add = sorted(activities_to_add, key=lambda x: x['distance'] / x['moving_time'], reverse=True)
   activities_to_add = list(filter(lambda x: x['type'] in ["Walk", "Swim", "Run", "Ride"], activities_to_add))
@@ -167,17 +163,3 @@ def add_all_activities_req(access_token):
           batch.put_item(Item=activity)
 
   return activities_to_add;
-
-
-
-
-
-
-
-      #  'location_city': entry['location_city'],
-      #  'location_state': entry['location_state'],
-      #  'location_country': entry['location_country'],
-      #  'achievement_count': entry['achievement_count'],
-      #  'kudos_count': entry['kudos_count'],
-      #  'comment_count': entry['comment_count'],
-      #  'pr_count': entry['pr_count']

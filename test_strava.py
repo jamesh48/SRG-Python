@@ -5,7 +5,7 @@ from pprint import pprint
 from auth_utilities import fetch_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_strava_req, fetch_individual_entry_req
+from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req
 
 def create_token_table():
   dynamodb = boto3.resource('dynamodb')
@@ -14,6 +14,23 @@ def create_token_table():
         TableName=table_name,
         KeySchema=[{'AttributeName': 'athleteId','KeyType': 'HASH'}],
         AttributeDefinitions=[{ 'AttributeName': 'athleteId','AttributeType': 'S' }],
+        BillingMode='PAY_PER_REQUEST'
+      )
+  return table, dynamodb
+
+def create_activities_table():
+  dynamodb = boto3.resource('dynamodb')
+  table_name = 'srg-activities-table'
+  table = dynamodb.create_table(
+        TableName=table_name,
+        KeySchema=[
+                   {'AttributeName': 'athleteId','KeyType': 'HASH'},
+                   {'AttributeName': 'activityId', 'KeyType': 'RANGE'}
+                  ],
+        AttributeDefinitions=[
+                   { 'AttributeName': 'athleteId','AttributeType': 'S' },
+                   {'AttributeName': 'activityId', 'AttributeType': 'S'}
+                  ],
         BillingMode='PAY_PER_REQUEST'
       )
   return table, dynamodb
@@ -95,6 +112,32 @@ def test_fetch_individual_entry(self):
     individual_entry = fetch_individual_entry_req('12345', '24680')
     individual_entry = json.loads(individual_entry)
     assert "resource_state" in individual_entry
+
+
+@mock_dynamodb
+def test_fetch_all_activities():
+    table, dynamodb = create_activities_table()
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'activityId': '987654321'
+        }
+    )
+
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'activityId': '123456789'
+        }
+    )
+    activities = fetch_all_activities_req('123456789')
+
+    # Assertions
+    assert len(activities) == 2
+    assert 'activityId' in activities[0]
+    assert 'activityId' in activities[1]
+    assert activities[0]['activityId'] != activities[1]['activityId']
+
 
 
 @mock_dynamodb
