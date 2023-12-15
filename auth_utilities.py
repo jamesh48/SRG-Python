@@ -24,7 +24,7 @@ def auth():
 
     url = "http://www.strava.com/oauth/authorize?client_id=" + client_id + \
         "&response_type=code&redirect_uri=" + strava_exc_token_redirect_uri + \
-        "/srg/exchange_token&approval_prompt=force&scope=profile:read_all,activity:read_all"
+        "&approval_prompt=force&scope=profile:read_all,activity:read_all"
     return redirect(url, code=302)
 
 
@@ -51,10 +51,7 @@ def exchange_token():
             'refresh_token': strava_tokens['refresh_token']
         }
         upsert_tokens(athlete_id, tokens)
-        response = make_response(redirect('https://stravareportgenerator.com'))
-        # set_cookie comes after make_response
-        response.set_cookie('srg_athlete_id', athlete_id)
-        return response
+        return athlete_id
     except Exception as e:
         pprint(e)
         return 'authentication error'
@@ -108,8 +105,8 @@ def fetch_tokens(athlete_id, dynamodb=None):
     else:
         raise ClientError({ 'Error': { 'Message': 'No athlete_id token found' }}, 'fetch_tokens')
 
-def get_access_token_from_athlete_id():
-    athlete_id = request.cookies.get('srg_athlete_id')
+def get_access_token_from_athlete_id(athlete_id):
+    pprint(athlete_id)
     tokens = fetch_tokens(athlete_id)
 
     # Check to see if the token is expired

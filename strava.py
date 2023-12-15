@@ -9,7 +9,7 @@ from flask_cors import CORS
 load_dotenv(find_dotenv())
 
 app = Flask(__name__)
-CORS(app, resources={r"/srg/*": {"origins": "http://stravareportgenerator.com"}})
+CORS(app, supports_credentials=True)
 
 app.register_blueprint(data_controller_bp)
 app.register_blueprint(auth_controller_bp)

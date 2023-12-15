@@ -3,7 +3,7 @@ import json
 import requests
 from pprint import pprint
 from auth_utilities import get_access_token_from_athlete_id
-from flask import Blueprint
+from flask import Blueprint, make_response, request, jsonify
 
 data_controller_bp = Blueprint('data_controller', __name__)
 
@@ -15,14 +15,15 @@ def route_fetch_individual_entry(entryId):
 
 def fetch_individual_entry_req(entryId, access_token):
     url = f"https://www.strava.com/api/v3/activities/{entryId}?include_all_efforts=true"
-    r = requests.get(url, headers={"Authorization": f"Bearer {access_token}"})
+    r = requests.get(url, headers={"Authorization": f"Bearer { access_token }"})
     r = r.json()
     return json.dumps(r)
 
 
 def fetch_individual_entry(entryId):
     try:
-        access_token = get_access_token_from_athlete_id()
+        srg_athlete_id = request.args.get('srg_athlete_id')
+        access_token = get_access_token_from_athlete_id(srg_athlete_id)
         data = fetch_individual_entry_req(entryId, access_token)
         return data
     except Exception as e:
@@ -50,7 +51,8 @@ def fetch_all_activities_req(access_token, page):
 
 
 def fetch_all_activities():
-  access_token = get_access_token_from_athlete_id()
+  srg_athlete_id = request.args.get('srg_athlete_id')
+  access_token = get_access_token_from_athlete_id(srg_athlete_id)
   r = fetch_all_activities_req(access_token, 1)
   return json.dumps(r)
 
@@ -60,11 +62,13 @@ def route_get_logged_in_user():
    try:
       return get_logged_in_user()
    except Exception as e:
-      pprint(e)
-      return ('Get LoggedIn User Error: %s\n' % e)
+      response = make_response(e)
+      response.status_code = 500
+      return response
 
 def get_logged_in_user():
-   access_token = get_access_token_from_athlete_id()
+   srg_athlete_id = request.args.get('srg_athlete_id')
+   access_token = get_access_token_from_athlete_id(srg_athlete_id)
    r = get_logged_in_user_req(access_token)
    return json.dumps(r)
 
@@ -80,7 +84,7 @@ def route_get_athlete_stats(athleteId):
   return fetch_athlete_stats(athleteId)
 
 def fetch_athlete_stats(athleteId):
-   access_token = get_access_token_from_athlete_id()
+   access_token = get_access_token_from_athlete_id(athleteId)
    r = fetch_athlete_stats_req(athleteId, access_token)
    return json.dumps(r)
 

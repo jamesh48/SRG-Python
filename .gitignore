@@ -5,4 +5,6 @@ __pycache__
 .env
 pyvenv.cfg
 strava_tokens.json
-!iac
+!
+
+test.json
