@@ -140,11 +140,11 @@ export class SRGPythonStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    new dynamodb.Table(this, 'srg-athlete-activities', {
-      tableName: 'srg-activities-table',
-      partitionKey: { name: 'activityId', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'athleteId', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    // new dynamodb.Table(this, 'srg-athlete-activities', {
+    //   tableName: 'srg-activities-table',
+    //   partitionKey: { name: 'activityId', type: dynamodb.AttributeType.STRING },
+    //   sortKey: { name: 'athleteId', type: dynamodb.AttributeType.STRING },
+    //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    // });
   }
 }
