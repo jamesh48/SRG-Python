@@ -74,5 +74,21 @@ def get_logged_in_user_req(access_token):
   r = r.json()
   return r
 
+###### Get Logged In Users Stats ######
+@data_controller_bp.route('/srg/getAthleteStats/<athleteId>', methods=["GET"])
+def route_get_athlete_stats(athleteId):
+  return fetch_athlete_stats(athleteId)
+
+def fetch_athlete_stats(athleteId):
+   access_token = get_access_token_from_athlete_id()
+   r = fetch_athlete_stats_req(athleteId, access_token)
+   return json.dumps(r)
+
+def fetch_athlete_stats_req(athleteId, access_token):
+   url = 'https://www.strava.com/api/v3/athletes/' + athleteId + '/stats/'
+   r = requests.get(url + '?access_token=' + access_token)
+   r = r.json()
+   return r
+
 
 
