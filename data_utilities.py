@@ -1,6 +1,7 @@
 import boto3
 import json
 import requests
+from pprint import pprint
 from auth_utilities import get_access_token_from_athlete_id
 from flask import Blueprint
 
@@ -59,8 +60,8 @@ def route_get_logged_in_user():
    try:
       return get_logged_in_user()
    except Exception as e:
-      print(e)
-      return 'error'
+      pprint(e)
+      return ('Get LoggedIn User Error: %s\n' % e)
 
 def get_logged_in_user():
    access_token = get_access_token_from_athlete_id()
