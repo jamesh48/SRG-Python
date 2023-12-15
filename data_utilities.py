@@ -69,7 +69,7 @@ def get_logged_in_user():
 
 def get_logged_in_user_req(access_token):
   url = "https://www.strava.com/api/v3/athlete"
-  r = requests.get(url + '?access_token=' + access_token, params={'scope': 'activity:read_all'})
+  r = requests.get(url + '?access_token=' + access_token, params={ 'scope': 'activity:read_all' })
   r = r.json()
   return r
 

@@ -51,7 +51,7 @@ def exchange_token():
             'refresh_token': strava_tokens['refresh_token']
         }
         upsert_tokens(athlete_id, tokens)
-        response = make_response(redirect('https://stravareportgenerator.app'))
+        response = make_response(redirect('https://stravareportgenerator.com'))
         # set_cookie comes after make_response
         response.set_cookie('srg_athlete_id', athlete_id)
         return response
