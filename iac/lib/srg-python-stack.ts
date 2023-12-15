@@ -1,18 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
-import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { Construct } from 'constructs';
-import { aws_elasticloadbalancingv2 } from 'aws-cdk-lib';
-import {
-  ApplicationListener,
-  ApplicationProtocol,
-  ApplicationTargetGroup,
-} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 
 interface SRGPythonStackProps extends cdk.StackProps {
@@ -102,7 +94,7 @@ export class SRGPythonStack extends cdk.Stack {
       hostPort: 5000,
     });
 
-    const importedALBListener = ApplicationListener.fromLookup(
+    const importedALBListener = elbv2.ApplicationListener.fromLookup(
       this,
       'imported-listener',
       {
@@ -111,30 +103,38 @@ export class SRGPythonStack extends cdk.Stack {
       }
     );
 
-    const targetGroup = new ApplicationTargetGroup(this, 'srg-python-tg', {
-      // targetGroupName: 'srg-svc-target',
-      port: 5000,
-      protocol: ApplicationProtocol.HTTP,
-      targets: [srgFargateService],
-      vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg', {
-        vpcId: props.aws_env.AWS_VPC_ID,
-      }),
-      healthCheck: {
-        path: '/srg/healthcheck',
-        unhealthyThresholdCount: 2,
-        healthyHttpCodes: '200',
-        healthyThresholdCount: 5,
-        interval: cdk.Duration.seconds(30),
-        port: '5000',
-        timeout: cdk.Duration.seconds(10),
-      },
-    });
+    const targetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      'srg-python-tg',
+      {
+        // targetGroupName: 'srg-svc-target',
+        port: 5000,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        targets: [srgFargateService],
+        vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg', {
+          vpcId: props.aws_env.AWS_VPC_ID,
+        }),
+        healthCheck: {
+          path: '/srg/healthcheck',
+          unhealthyThresholdCount: 2,
+          healthyHttpCodes: '200',
+          healthyThresholdCount: 5,
+          interval: cdk.Duration.seconds(30),
+          port: '5000',
+          timeout: cdk.Duration.seconds(10),
+        },
+      }
+    );
 
     importedALBListener.addTargetGroups('srg-listener-tg', {
       targetGroups: [targetGroup],
       priority: 20,
       conditions: [
-        aws_elasticloadbalancingv2.ListenerCondition.pathPatterns(['/srg/*']),
+        elbv2.ListenerCondition.hostHeaders([
+          '*.stravareportgenerator.com',
+          'stravareportgenerator.com',
+        ]),
+        elbv2.ListenerCondition.pathPatterns(['/', '/srg/*']),
       ],
     });
 
