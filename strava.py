@@ -4,10 +4,13 @@ from dotenv import load_dotenv, find_dotenv
 from flask import Flask
 from data_utilities import data_controller_bp
 from auth_utilities import auth_controller_bp
+from flask_cors import CORS
 
 load_dotenv(find_dotenv())
 
 app = Flask(__name__)
+CORS(app, resources={r"/srg/*": {"origins": "http://stravareportgenerator.com"}})
+
 app.register_blueprint(data_controller_bp)
 app.register_blueprint(auth_controller_bp)
 
