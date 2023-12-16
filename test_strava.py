@@ -5,35 +5,39 @@ from pprint import pprint
 from auth_utilities import fetch_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req
+from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req
+
 
 def create_token_table():
-  dynamodb = boto3.resource('dynamodb')
-  table_name = 'srg-token-table'
-  table = dynamodb.create_table(
+    dynamodb = boto3.resource('dynamodb')
+    table_name = 'srg-token-table'
+    table = dynamodb.create_table(
         TableName=table_name,
-        KeySchema=[{ 'AttributeName': 'athleteId','KeyType': 'HASH' }],
-        AttributeDefinitions=[{ 'AttributeName': 'athleteId','AttributeType': 'S' }],
+        KeySchema=[{'AttributeName': 'athleteId', 'KeyType': 'HASH'}],
+        AttributeDefinitions=[
+            {'AttributeName': 'athleteId', 'AttributeType': 'S'}],
         BillingMode='PAY_PER_REQUEST'
-      )
-  return table
+    )
+    return table
+
 
 def create_activities_table():
-  dynamodb = boto3.resource('dynamodb')
-  table_name = 'srg-activities-table'
-  table = dynamodb.create_table(
+    dynamodb = boto3.resource('dynamodb')
+    table_name = 'srg-activities-table'
+    table = dynamodb.create_table(
         TableName=table_name,
         KeySchema=[
-                   {'AttributeName': 'athleteId','KeyType': 'HASH'},
-                   {'AttributeName': 'activityId', 'KeyType': 'RANGE'}
-                  ],
+            {'AttributeName': 'athleteId', 'KeyType': 'HASH'},
+            {'AttributeName': 'activityId', 'KeyType': 'RANGE'}
+        ],
         AttributeDefinitions=[
-                   { 'AttributeName': 'athleteId','AttributeType': 'S' },
-                   {'AttributeName': 'activityId', 'AttributeType': 'S'}
-                  ],
+            {'AttributeName': 'athleteId', 'AttributeType': 'S'},
+            {'AttributeName': 'activityId', 'AttributeType': 'S'}
+        ],
         BillingMode='PAY_PER_REQUEST'
-      )
-  return table
+    )
+    return table
+
 
 def mocked_requests_get(*args, **kwargs):
     class MockResponse:
@@ -49,63 +53,65 @@ def mocked_requests_get(*args, **kwargs):
     # All Activities Test
     elif args[0].startswith('https://www.strava.com/api/v3/activities'):
         return MockResponse([{
-    "resource_state": 2,
-    "athlete": { "id": 19812306, "resource_state": 1 },
-    "name": "Morning Swim",
-    "distance": 1897.4,
-    "moving_time": 2522,
-    "elapsed_time": 2522,
-    "total_elevation_gain": 0,
-    "type": "Swim",
-    "sport_type": "Swim",
-    "id": 10295631901,
-    "start_date": "2023-11-27T15:46:41Z",
-    "start_date_local": "2023-11-27T08:46:41Z",
-    "timezone": "(GMT-07:00) America/Boise",
-    "utc_offset": -25200.0,
-    "location_city": None,
-    "location_state": None,
-    "location_country": "United States",
-    "achievement_count": 0,
-    "kudos_count": 1,
-    "comment_count": 0,
-    "athlete_count": 1,
-    "photo_count": 0,
-    "map": { "id": "a10295631901", "summary_polyline": "", "resource_state": 2 },
-    "trainer": True,
-    "commute": False,
-    "manual": False,
-    "private": False,
-    "visibility": "everyone",
-    "flagged": False,
-    "gear_id": None,
-    "start_latlng": [],
-    "end_latlng": [],
-    "average_speed": 0.752,
-    "max_speed": 4.572,
-    "has_heartrate": True,
-    "average_heartrate": 146.6,
-    "max_heartrate": 190.0,
-    "heartrate_opt_out": False,
-    "display_hide_heartrate_option": True,
-    "elev_high": 0.0,
-    "elev_low": 0.0,
-    "upload_id": 11023354664,
-    "upload_id_str": "11023354664",
-    "external_id": "5730D4C3-C345-4140-8F86-A797250DD200.fit",
-    "from_accepted_tag": False,
-    "pr_count": 0,
-    "total_photo_count": 0,
-    "has_kudoed": False
-  }], 200)
+            "resource_state": 2,
+            "athlete": {"id": 19812306, "resource_state": 1},
+            "name": "Morning Swim",
+            "distance": 1897.4,
+            "moving_time": 2522,
+            "elapsed_time": 2522,
+            "total_elevation_gain": 0,
+            "type": "Swim",
+            "sport_type": "Swim",
+            "id": 10295631901,
+            "start_date": "2023-11-27T15:46:41Z",
+            "start_date_local": "2023-11-27T08:46:41Z",
+            "timezone": "(GMT-07:00) America/Boise",
+            "utc_offset": -25200.0,
+            "location_city": None,
+            "location_state": None,
+            "location_country": "United States",
+            "achievement_count": 0,
+            "kudos_count": 1,
+            "comment_count": 0,
+            "athlete_count": 1,
+            "photo_count": 0,
+            "map": {"id": "a10295631901", "summary_polyline": "", "resource_state": 2},
+            "trainer": True,
+            "commute": False,
+            "manual": False,
+            "private": False,
+            "visibility": "everyone",
+            "flagged": False,
+            "gear_id": None,
+            "start_latlng": [],
+            "end_latlng": [],
+            "average_speed": 0.752,
+            "max_speed": 4.572,
+            "has_heartrate": True,
+            "average_heartrate": 146.6,
+            "max_heartrate": 190.0,
+            "heartrate_opt_out": False,
+            "display_hide_heartrate_option": True,
+            "elev_high": 0.0,
+            "elev_low": 0.0,
+            "upload_id": 11023354664,
+            "upload_id_str": "11023354664",
+            "external_id": "5730D4C3-C345-4140-8F86-A797250DD200.fit",
+            "from_accepted_tag": False,
+            "pr_count": 0,
+            "total_photo_count": 0,
+            "has_kudoed": False
+        }], 200)
 
     return MockResponse(None, 404)
+
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_all_strava_activities(self):
     all_activities = fetch_all_activities_strava_req('123456789', 1)
     print(all_activities[0])
     assert "resource_state" in all_activities[0]
+
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_individual_entry_from_strava(self):
@@ -139,6 +145,7 @@ def test_fetch_all_activities_same_user():
     assert 'activityId' in activities[1]
     assert activities[0]['activityId'] != activities[1]['activityId']
 
+
 @mock_dynamodb
 def test_fetch_all_activities_different_users():
     table = create_activities_table()
@@ -166,19 +173,44 @@ def test_fetch_all_activities_different_users():
     assert 'activityId' in user_two_activities[0]
 
 
-
 @mock_dynamodb
 def test_fetch_tokens():
     table = create_token_table()
     table.put_item(
-       Item={
-       'athleteId': '123456789',
-       'accessToken': '13579',
-       'refreshToken': '24680'
-       }
+        Item={
+            'athleteId': '123456789',
+            'accessToken': '13579',
+            'refreshToken': '24680'
+        }
     )
     tokens = fetch_tokens('123456789')
 
     assert "athleteId" in tokens
     assert "accessToken" in tokens
     assert "refreshToken" in tokens
+
+
+@mock_dynamodb
+def test_destroy_user():
+    table = create_activities_table()
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'activityId': '987654321'
+        }
+    )
+
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'activityId': '123456789'
+        }
+    )
+
+    activities = table.scan()
+    activities = activities['Items']
+    assert len(activities) == 2
+    response = destroy_user_req('123456789')
+    activities = table.scan()
+    activities = activities['Items']
+    assert len(activities) == 0
