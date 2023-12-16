@@ -12,7 +12,7 @@ def create_token_table():
   table_name = 'srg-token-table'
   table = dynamodb.create_table(
         TableName=table_name,
-        KeySchema=[{'AttributeName': 'athleteId','KeyType': 'HASH'}],
+        KeySchema=[{ 'AttributeName': 'athleteId','KeyType': 'HASH' }],
         AttributeDefinitions=[{ 'AttributeName': 'athleteId','AttributeType': 'S' }],
         BillingMode='PAY_PER_REQUEST'
       )

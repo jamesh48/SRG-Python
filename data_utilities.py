@@ -124,7 +124,8 @@ def add_all_activities():
 def add_all_activities_req(access_token):
   activities_to_add = fetch_all_activities_strava_req(access_token, 1)
   # Sort and Filter Activities
-  activities_to_add = sorted(activities_to_add, key=lambda x: x['distance'] / x['moving_time'], reverse=True)
+  activities_to_add = sorted(activities_to_add, key=lambda x: (x['distance'] / x['moving_time']) if x['moving_time'] != 0 else float('-inf'), reverse=True)
+
   activities_to_add = list(filter(lambda x: x['type'] in ["Walk", "Swim", "Run", "Ride"], activities_to_add))
 
   # Upload Activities To DynamoDB

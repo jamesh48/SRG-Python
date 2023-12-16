@@ -47,33 +47,32 @@ def exchange_token():
         strava_tokens = response.json()
         athlete_id = str(strava_tokens['athlete']['id'])
         tokens = {
+            'athlete_id': athlete_id,
             'access_token': strava_tokens['access_token'],
-            'refresh_token': strava_tokens['refresh_token']
+            'refresh_token': strava_tokens['refresh_token'],
+            'expires_at': strava_tokens['expires_at']
         }
-        upsert_tokens(athlete_id, tokens)
+        upsert_tokens(tokens)
         return athlete_id
     except Exception as e:
         pprint(e)
         return 'authentication error'
 
 
-def upsert_tokens(athlete_id, tokens, dynamodb=None):
+def upsert_tokens(tokens):
     try:
         dynamodb = boto3.resource('dynamodb')
         tokens_table = dynamodb.Table('srg-token-table')
         response = tokens_table.put_item(
             Item={
-                "athleteId": athlete_id,
+                "athleteId": tokens['athlete_id'],
                 "accessToken": tokens['access_token'],
                 "refreshToken": tokens['refresh_token'],
                 "expiresAt": tokens['expires_at']
             }
         )
-
-        pprint(response)
         return response
     except Exception as e:
-        pprint(e)
         return e
 
 
