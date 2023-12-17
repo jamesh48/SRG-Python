@@ -98,8 +98,10 @@ def get_logged_in_user():
 
 def get_logged_in_user_req(access_token):
     url = "https://www.strava.com/api/v3/athlete"
-    r = requests.get(url + '?access_token=' + access_token,
-                     params={'scope': 'activity:read_all'})
+    r = requests.get(
+        url + '?access_token=' + access_token,
+        params={'scope': 'activity:read_all'}
+    )
     r = r.json()
     return r
 
@@ -189,7 +191,10 @@ def add_all_activities_req(access_token):
 
 @data_controller_bp.route('/srg/destroyUser', methods=["GET"])
 def route_destroy_user():
-    return destroy_user()
+    try:
+        return destroy_user()
+    except Exception as e:
+        return ('<html><style>body { background-color: ivory }</style><div>Destroy User Error</div> <p>%s</p></html>' % e)
 
 
 def destroy_user():
@@ -227,3 +232,50 @@ def delete_item(keys):
             'activityId': keys[1]
         }
     )
+
+
+@data_controller_bp.route("/srg/activityUpdate", methods=['PUT'])
+def route_put_activity_update():
+    return put_activity_update()
+
+
+def put_activity_update():
+    # Query Parameters
+    srg_athlete_id = request.args.get('srg_athlete_id')
+    entry_id = request.args.get('entry_id')
+    name = request.args.get('name')
+    description = request.args.get('description')
+
+    # AccessToken
+    access_token = get_access_token_from_athlete_id(srg_athlete_id)
+    # Update Strava
+    put_activity_update_req(access_token, entry_id, name, description)
+    # Update Dynamo
+    update_one_activity_req(srg_athlete_id, entry_id, name)
+    return 'updated activity!'
+
+
+def update_one_activity_req(athleteId, activityId, name):
+    dynamodb = boto3.resource('dynamodb')
+    table_name = 'srg-activities-table'
+    table = dynamodb.Table(table_name)
+    key = {'athleteId': athleteId, 'activityId': activityId}
+    update_expression = 'SET #nameAttr = :nameValue'
+    expression_attribute_names = {'#nameAttr': 'name'}
+    expression_attribute_values = {':nameValue': name}
+    table.update_item(
+        Key=key,
+        UpdateExpression=update_expression,
+        ExpressionAttributeNames=expression_attribute_names, ExpressionAttributeValues=expression_attribute_values
+    )
+    return 'ok'
+
+
+def put_activity_update_req(access_token, entry_id, name, description):
+    url = f"https://www.strava.com/api/v3/activities/{entry_id}?name={name}&description={description}"
+    r = requests.put(
+        url, headers={"Authorization": f"Bearer { access_token }"}
+    )
+    r = r.json()
+    pprint(r)
+    return r
