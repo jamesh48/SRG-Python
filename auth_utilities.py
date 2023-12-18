@@ -79,13 +79,19 @@ def upsert_tokens(tokens):
 def refresh_tokens(athlete_id, refresh_token):
     client_id = os.environ.get('strava_client_id')
     client_secret = os.environ.get('strava_client_secret')
-    tokens = requests.post(url="https://www.strava.com/api/v3/oauth/token", data={
+    strava_tokens = requests.post(url="https://www.strava.com/api/v3/oauth/token", data={
         'client_id': client_id,
         'client_secret': client_secret,
         'grant_type': 'refresh_token',
         'refresh_token': refresh_token
     })
-    tokens = tokens.json()
+    strava_tokens = tokens.json()
+    tokens = {
+        'athlete_id': athlete_id,
+        'access_token': strava_tokens['access_token'],
+        'refresh_token': strava_tokens['refresh_token'],
+        'expires_at': strava_tokens['expires_at']
+    }
     upsert_tokens(tokens)
     return tokens['access_token']
 

@@ -2,7 +2,7 @@ import boto3
 import json
 import pytest
 from pprint import pprint
-from auth_utilities import fetch_tokens
+from auth_utilities import fetch_tokens, upsert_tokens
 from moto import mock_dynamodb
 from unittest import mock
 from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req
@@ -92,6 +92,32 @@ def test_update_entry_in_strava(self):
     assert 'achievement_count' in test
 
 ###### Tests! ######
+
+
+@mock_dynamodb
+def test_upsert_tokens():
+    table = create_token_table()
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'accessToken': '13579',
+            'refreshToken': '24680',
+            'expiresAt': '1702926029'
+        }
+    )
+    upsert_tokens(tokens={
+        'athlete_id': '123456789',
+        'access_token': '24680',
+        'refresh_token': '13579',
+        'expires_at': '1702926653'
+    })
+
+    r = table.scan()
+    r = r['Items'][0]
+    assert r['athleteId'] == '123456789'
+    assert r['accessToken'] == '24680'
+    assert r['refreshToken'] == '13579'
+    assert r['expiresAt'] == '1702926653'
 
 
 @mock_dynamodb
