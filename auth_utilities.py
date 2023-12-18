@@ -85,7 +85,7 @@ def refresh_tokens(athlete_id, refresh_token):
         'grant_type': 'refresh_token',
         'refresh_token': refresh_token
     })
-    strava_tokens = tokens.json()
+    strava_tokens = strava_tokens.json()
     tokens = {
         'athlete_id': athlete_id,
         'access_token': strava_tokens['access_token'],
