@@ -86,12 +86,11 @@ def refresh_tokens(athlete_id, refresh_token):
         'refresh_token': refresh_token
     })
     tokens = tokens.json()
-    upsert_tokens(athlete_id, tokens)
+    upsert_tokens(tokens)
     return tokens['access_token']
 
 
 def fetch_tokens(athlete_id):
-    print(os.environ.get('AWS_REGION'))
     dynamodb = boto3.resource('dynamodb')
     tokens_table = dynamodb.Table('srg-token-table')
     response = tokens_table.get_item(
@@ -102,7 +101,9 @@ def fetch_tokens(athlete_id):
     if 'Item' in response:
         return response['Item']
     else:
-        raise ClientError({ 'Error': { 'Message': 'No athlete_id token found' }}, 'fetch_tokens')
+        raise ClientError(
+            {'Error': {'Message': 'No athlete_id token found'}}, 'fetch_tokens')
+
 
 def get_access_token_from_athlete_id(athlete_id):
     pprint(athlete_id)
