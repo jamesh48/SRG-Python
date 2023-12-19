@@ -5,7 +5,7 @@ from pprint import pprint
 from auth_utilities import fetch_tokens, upsert_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req
+from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req
 
 
 def create_token_table():
@@ -47,7 +47,12 @@ def mocked_requests_get(*args, **kwargs):
 
         def json(self):
             return self.json_data
-    if args[0].startswith('https://www.strava.com/api/v3/activities/12345?name=testname&description=testdescription'):
+    # Entry Kudos Test
+    if args[0].startswith('https://www.strava.com/api/v3/activities/12345/kudos'):
+        with open('testing_fixtures/fetch_entry_kudos.json', 'r') as file:
+            mock_data = json.load(file)
+        return MockResponse(mock_data, 200)
+    elif args[0].startswith('https://www.strava.com/api/v3/activities/12345?name=testname&description=testdescription'):
         with open('testing_fixtures/update_one_activity_strava.json', 'r') as file:
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
@@ -56,7 +61,6 @@ def mocked_requests_get(*args, **kwargs):
         with open('testing_fixtures/fetch_individual_entry_strava.json', 'r') as file:
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
-
     # All Activities Test
     elif args[0].startswith('https://www.strava.com/api/v3/activities'):
         with open('testing_fixtures/fetch_all_activities_strava.json', 'r') as file:
@@ -69,7 +73,6 @@ def mocked_requests_get(*args, **kwargs):
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_all_strava_activities(self):
     all_activities = fetch_all_activities_strava_req('123456789', 1)
-    print(all_activities[0])
     assert "resource_state" in all_activities[0]
 
 
@@ -79,6 +82,12 @@ def test_fetch_individual_entry_from_strava(self):
     individual_entry = json.loads(individual_entry)
     assert "resource_state" in individual_entry
 
+@mock.patch('requests.get', side_effect=mocked_requests_get)
+def test_fetch_kudoers(self):
+    kudoers = fetch_entry_kudoers_req('12345', '54321')
+    assert len(kudoers) == 2
+    assert kudoers[0]['firstname'] == 'Joe'
+    assert kudoers[1]['firstname'] == 'Gordon'
 
 @mock.patch('requests.put', side_effect=mocked_requests_get)
 def test_update_entry_in_strava(self):
@@ -88,7 +97,6 @@ def test_update_entry_in_strava(self):
         name="testname",
         description="testdescription"
     )
-    pprint(test)
     assert 'achievement_count' in test
 
 ###### Tests! ######
@@ -228,7 +236,6 @@ def test_update_one_activity():
     )
     activities = table.scan()
     activities = activities['Items']
-    print(activities)
     assert len(activities) == 1
     assert 'athleteId' in activities[0]
     assert 'location_city' in activities[0]

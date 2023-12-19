@@ -9,7 +9,6 @@ const {
   AWS_ACCOUNT_NUMBER,
   AWS_CLUSTER_ARN,
   AWS_DEFAULT_SG,
-  AWS_LOAD_BALANCER_ARN,
   AWS_VPC_ID,
   CDK_REGION,
   STRAVA_CLIENT_ID,
@@ -31,10 +30,6 @@ if (!AWS_CLUSTER_ARN) {
 
 if (!AWS_DEFAULT_SG) {
   throw new Error('AWS_DEFAULT_SG environment variable is undefined!');
-}
-
-if (!AWS_LOAD_BALANCER_ARN) {
-  throw new Error('AWS_LOAD_BALANCER_ARN environment variable is undefined!');
 }
 
 if (!AWS_VPC_ID) {

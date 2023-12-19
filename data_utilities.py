@@ -9,6 +9,22 @@ from concurrent.futures import ThreadPoolExecutor
 
 data_controller_bp = Blueprint('data_controller', __name__)
 
+@data_controller_bp.route('/srg/entryKudos/<entryId>', methods=["GET"])
+def route_fetch_entry_kudoers(entryId):
+    return fetch_entry_kudoers(entryId)
+
+def fetch_entry_kudoers(entry_id):
+    srg_athlete_id = request.args.get('srg_athlete_id')
+    access_token = get_access_token_from_athlete_id(srg_athlete_id)
+    return fetch_entry_kudoers_req(entry_id, access_token)
+
+def fetch_entry_kudoers_req(entry_id, access_token):
+    url = f"https://www.strava.com/api/v3/activities/{entry_id}/kudos"
+    r = requests.get(url, headers={"Authorization": f"Bearer { access_token }"})
+    r = r.json()
+    return r
+
+
 
 @data_controller_bp.route('/srg/individualEntry/<entryId>', methods=["GET"])
 def route_fetch_individual_entry(entryId):
@@ -47,8 +63,11 @@ def route_fetch_all_activities():
 
 def fetch_all_activities_strava_req(access_token, page):
     url = "https://www.strava.com/api/v3/activities"
-    r = requests.get(url + '?access_token=' + access_token,
-                     params={'page': page, 'per_page': 200})
+    r = requests.get(
+        url,
+        headers={ "Authorization": f"Bearer { access_token }" },
+        params={ 'page': page, 'per_page': 200 }
+    )
     r = r.json()
 
     if len(r) == 200:

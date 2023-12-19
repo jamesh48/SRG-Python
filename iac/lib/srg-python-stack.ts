@@ -11,7 +11,6 @@ interface SRGPythonStackProps extends cdk.StackProps {
   aws_env: {
     AWS_CLUSTER_ARN: string;
     AWS_DEFAULT_SG: string;
-    AWS_LOAD_BALANCER_ARN: string;
     AWS_VPC_ID: string;
   };
   svc_env: {
