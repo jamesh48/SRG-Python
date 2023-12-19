@@ -53,7 +53,6 @@ if (!STRAVA_EXC_TOKEN_REDIRECT_URI) {
 
 new SRGPythonStack(app, 'SRGPythonStack', {
   aws_env: {
-    AWS_LOAD_BALANCER_ARN,
     AWS_CLUSTER_ARN,
     AWS_DEFAULT_SG,
     AWS_VPC_ID,
