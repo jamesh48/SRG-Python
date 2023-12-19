@@ -24,6 +24,21 @@ def fetch_entry_kudoers_req(entry_id, access_token):
     r = r.json()
     return r
 
+@data_controller_bp.route('/srg/entryComments/<entryId>', methods=["GET"])
+def route_fetch_entry_comments(entryId):
+    return fetch_entry_comments(entryId)
+
+def fetch_entry_comments(entry_id):
+    srg_athlete_id = request.args.get('srg_athlete_id')
+    access_token = get_access_token_from_athlete_id(srg_athlete_id)
+    return fetch_entry_comments_req(entry_id, access_token)
+
+def fetch_entry_comments_req(entry_id, access_token):
+    url = f"https://www.strava.com/api/v3/activities/{entry_id}/comments"
+    r = requests.get(url, headers={"Authorization": f"Bearer { access_token }"})
+    r = r.json()
+    return r
+
 
 
 @data_controller_bp.route('/srg/individualEntry/<entryId>', methods=["GET"])
