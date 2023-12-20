@@ -233,13 +233,26 @@ def route_destroy_user():
 
 def destroy_user():
     srg_athlete_id = request.args.get('srg_athlete_id')
-    return destroy_user_req(srg_athlete_id)
+    destroy_user_req(srg_athlete_id)
+    destroy_user_tokens_req(srg_athlete_id)
+    return 'deleted'
 
+def destroy_user_tokens_req(srg_athlete_id):
+    dynamodb = boto3.resource('dynamodb')
+    table_name = 'srg-token-table'
+    table = dynamodb.Table(table_name)
+    table.delete_item(
+        Key={
+            'athleteId': srg_athlete_id
+        }
+    )
+    return 'deleted tokens'
 
 def destroy_user_req(srg_athlete_id):
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
+
 
     # Use query to find all items with the specified athleteId
     response = table.query(
@@ -252,7 +265,7 @@ def destroy_user_req(srg_athlete_id):
         executor.map(delete_item, [
                      (item['athleteId'], item['activityId']) for item in response.get('Items', [])])
 
-    return 'deleted'
+    return 'deleted activities'
 
 
 def delete_item(keys):

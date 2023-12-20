@@ -5,7 +5,7 @@ from pprint import pprint
 from auth_utilities import fetch_tokens, upsert_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req
+from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req
 
 
 def create_token_table():
@@ -195,6 +195,19 @@ def test_fetch_tokens():
     assert "athleteId" in tokens
     assert "accessToken" in tokens
     assert "refreshToken" in tokens
+
+@mock_dynamodb
+def test_destroy_user_tokens():
+    table = create_token_table()
+    table.put_item(Item={
+        'athleteId': '123456789',
+        'accessToken': '13579',
+        'refreshToken': '24680'
+    })
+    destroy_user_tokens_req('123456789')
+    activities = table.scan()
+    assert not activities['Items']
+
 
 
 @mock_dynamodb
