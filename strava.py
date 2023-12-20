@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 from pprint import pprint
 from dotenv import load_dotenv, find_dotenv
 from flask import Flask
@@ -21,4 +22,9 @@ def return_healthy():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000)
+    env = os.environ.get('FLASK_ENVIRONMENT')
+    if env == 'production':
+        from waitress import serve
+        serve(app, host="0.0.0.0", port=5000)
+    else:
+        app.run(host="0.0.0.0", port=5000)

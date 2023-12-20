@@ -78,6 +78,7 @@ export class SRGPythonStack extends cdk.Stack {
           strava_client_secret: props.svc_env.STRAVA_CLIENT_SECRET,
           strava_exc_token_redirect_uri:
             props.svc_env.STRAVA_EXC_TOKEN_REDIRECT_URI,
+          FLASK_ENVIRONMENT: 'production',
         },
         image: ecs.ContainerImage.fromAsset('../'),
         logging: new ecs.AwsLogDriver({
