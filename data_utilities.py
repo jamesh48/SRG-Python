@@ -31,17 +31,6 @@ def fetch_entry_kudoers_req(entry_id, access_token):
     return r
 
 
-@data_controller_bp.route('/srg/entryComments/<entryId>', methods=["GET"])
-def route_fetch_entry_comments(entryId):
-    return fetch_entry_comments(entryId)
-
-
-def fetch_entry_comments(entry_id):
-    srg_athlete_id = request.args.get('srg_athlete_id')
-    access_token = get_access_token_from_athlete_id(srg_athlete_id)
-    return fetch_entry_comments_req(entry_id, access_token)
-
-
 def fetch_entry_comments_req(entry_id, access_token):
     url = f"https://www.strava.com/api/v3/activities/{entry_id}/comments"
     r = requests.get(
@@ -245,7 +234,7 @@ def destroy_user():
     srg_athlete_id = request.args.get('srg_athlete_id')
     destroy_user_req(srg_athlete_id)
     destroy_user_tokens_req(srg_athlete_id)
-    return 'deleted'
+    return jsonify({'status': 'success', 'message': 'User Deleted'})
 
 
 def destroy_user_tokens_req(srg_athlete_id):
