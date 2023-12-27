@@ -116,9 +116,8 @@ def route_get_logged_in_user():
     try:
         return get_logged_in_user()
     except Exception as e:
-        pprint(e)
-        response = make_response(e)
-        response.status_code = 500
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 500)
         return response
 
 
