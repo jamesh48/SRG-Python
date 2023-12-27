@@ -9,36 +9,45 @@ from concurrent.futures import ThreadPoolExecutor
 
 data_controller_bp = Blueprint('data_controller', __name__)
 
+
 @data_controller_bp.route('/srg/entryKudos/<entryId>', methods=["GET"])
 def route_fetch_entry_kudoers(entryId):
     return fetch_entry_kudoers(entryId)
 
+
 def fetch_entry_kudoers(entry_id):
     srg_athlete_id = request.args.get('srg_athlete_id')
     access_token = get_access_token_from_athlete_id(srg_athlete_id)
-    return fetch_entry_kudoers_req(entry_id, access_token)
+    comments = fetch_entry_comments_req(entry_id, access_token)
+    kudos = fetch_entry_kudoers_req(entry_id, access_token)
+    return {'comments': comments, 'kudos': kudos}
+
 
 def fetch_entry_kudoers_req(entry_id, access_token):
     url = f"https://www.strava.com/api/v3/activities/{entry_id}/kudos"
-    r = requests.get(url, headers={"Authorization": f"Bearer { access_token }"})
+    r = requests.get(
+        url, headers={"Authorization": f"Bearer { access_token }"})
     r = r.json()
     return r
+
 
 @data_controller_bp.route('/srg/entryComments/<entryId>', methods=["GET"])
 def route_fetch_entry_comments(entryId):
     return fetch_entry_comments(entryId)
+
 
 def fetch_entry_comments(entry_id):
     srg_athlete_id = request.args.get('srg_athlete_id')
     access_token = get_access_token_from_athlete_id(srg_athlete_id)
     return fetch_entry_comments_req(entry_id, access_token)
 
+
 def fetch_entry_comments_req(entry_id, access_token):
     url = f"https://www.strava.com/api/v3/activities/{entry_id}/comments"
-    r = requests.get(url, headers={"Authorization": f"Bearer { access_token }"})
+    r = requests.get(
+        url, headers={"Authorization": f"Bearer { access_token }"})
     r = r.json()
     return r
-
 
 
 @data_controller_bp.route('/srg/individualEntry/<entryId>', methods=["GET"])
@@ -80,8 +89,8 @@ def fetch_all_activities_strava_req(access_token, page):
     url = "https://www.strava.com/api/v3/activities"
     r = requests.get(
         url,
-        headers={ "Authorization": f"Bearer { access_token }" },
-        params={ 'page': page, 'per_page': 200 }
+        headers={"Authorization": f"Bearer { access_token }"},
+        params={'page': page, 'per_page': 200}
     )
     r = r.json()
 
@@ -118,6 +127,7 @@ def route_get_logged_in_user():
     try:
         return get_logged_in_user()
     except Exception as e:
+        pprint(e)
         response = make_response(e)
         response.status_code = 500
         return response
@@ -237,6 +247,7 @@ def destroy_user():
     destroy_user_tokens_req(srg_athlete_id)
     return 'deleted'
 
+
 def destroy_user_tokens_req(srg_athlete_id):
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-token-table'
@@ -248,11 +259,11 @@ def destroy_user_tokens_req(srg_athlete_id):
     )
     return 'deleted tokens'
 
+
 def destroy_user_req(srg_athlete_id):
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
-
 
     # Use query to find all items with the specified athleteId
     response = table.query(
