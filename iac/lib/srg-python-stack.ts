@@ -4,8 +4,10 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { LambdaTarget } from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 
 interface SRGPythonStackProps extends cdk.StackProps {
   aws_env: {
@@ -124,6 +126,30 @@ export class SRGPythonStack extends cdk.Stack {
         },
       }
     );
+
+    const lambdaTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      'srg-rust-lambda-tg',
+      {}
+    );
+    const lambdaTarget = new LambdaTarget(
+      lambda.Function.fromFunctionArn(
+        this,
+        'imported-fn',
+        'arn:aws:lambda:us-east-1:471507967541:function:rs-test'
+      )
+    );
+
+    importedALBListener.addTargetGroups('srg-rust-tg', {
+      targetGroups: [lambdaTargetGroup],
+      priority: 19,
+      conditions: [
+        elbv2.ListenerCondition.hostHeaders(['data.stravareportgenerator.com']),
+        elbv2.ListenerCondition.pathPatterns(['/srg-auth/*']),
+      ],
+    });
+
+    lambdaTarget.attachToApplicationTargetGroup(lambdaTargetGroup);
 
     importedALBListener.addTargetGroups('srg-listener-tg', {
       targetGroups: [targetGroup],
