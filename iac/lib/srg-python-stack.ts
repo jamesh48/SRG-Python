@@ -130,8 +130,13 @@ export class SRGPythonStack extends cdk.Stack {
     const lambdaTargetGroup = new elbv2.ApplicationTargetGroup(
       this,
       'srg-rust-lambda-tg',
-      {}
+      {
+        vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg-2', {
+          vpcId: props.aws_env.AWS_VPC_ID,
+        }),
+      }
     );
+
     const lambdaTarget = new LambdaTarget(
       lambda.Function.fromFunctionArn(
         this,
