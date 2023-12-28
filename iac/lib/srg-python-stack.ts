@@ -139,7 +139,6 @@ export class SRGPythonStack extends cdk.Stack {
       this,
       'srg-rust-lambda-tg',
       {
-        protocol: elbv2.ApplicationProtocol.HTTP,
         vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg-2', {
           vpcId: props.aws_env.AWS_VPC_ID,
         }),
