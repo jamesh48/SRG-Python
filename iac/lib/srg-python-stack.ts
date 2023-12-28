@@ -127,12 +127,15 @@ export class SRGPythonStack extends cdk.Stack {
       }
     );
 
-    const lambdaTarget = new LambdaTarget(
-      lambda.Function.fromFunctionArn(
-        this,
-        'imported-fn',
-        'arn:aws:lambda:us-east-1:471507967541:function:rs-test'
-      )
+    const lambdaFn = lambda.Function.fromFunctionArn(
+      this,
+      'imported-fn',
+      'arn:aws:lambda:us-east-1:471507967541:function:rs-test'
+    );
+    const lambdaTarget = new LambdaTarget(lambdaFn);
+
+    lambdaFn.grantInvoke(
+      new iam.ServicePrincipal('elasticloadbalancing.amazonaws.com')
     );
 
     const lambdaTargetGroup = new elbv2.ApplicationTargetGroup(
