@@ -127,37 +127,6 @@ export class SRGPythonStack extends cdk.Stack {
       }
     );
 
-    const lambdaFn = lambda.Function.fromFunctionArn(
-      this,
-      'imported-fn',
-      'arn:aws:lambda:us-east-1:471507967541:function:rs-test'
-    );
-    const lambdaTarget = new LambdaTarget(lambdaFn);
-
-    lambdaFn.grantInvoke(
-      new iam.ServicePrincipal('elasticloadbalancing.amazonaws.com')
-    );
-
-    const lambdaTargetGroup = new elbv2.ApplicationTargetGroup(
-      this,
-      'srg-rust-lambda-tg',
-      {
-        vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg-2', {
-          vpcId: props.aws_env.AWS_VPC_ID,
-        }),
-        targets: [lambdaTarget],
-      }
-    );
-
-    importedALBListener.addTargetGroups('srg-rust-tg', {
-      targetGroups: [lambdaTargetGroup],
-      priority: 19,
-      conditions: [
-        elbv2.ListenerCondition.hostHeaders(['data.stravareportgenerator.com']),
-        elbv2.ListenerCondition.pathPatterns(['/srg-auth/tokens']),
-      ],
-    });
-
     importedALBListener.addTargetGroups('srg-listener-tg', {
       targetGroups: [targetGroup],
       priority: 20,
