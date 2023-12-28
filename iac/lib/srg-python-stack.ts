@@ -127,17 +127,6 @@ export class SRGPythonStack extends cdk.Stack {
       }
     );
 
-    const lambdaTargetGroup = new elbv2.ApplicationTargetGroup(
-      this,
-      'srg-rust-lambda-tg',
-      {
-        protocol: elbv2.ApplicationProtocol.HTTP,
-        vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg-2', {
-          vpcId: props.aws_env.AWS_VPC_ID,
-        }),
-      }
-    );
-
     const lambdaTarget = new LambdaTarget(
       lambda.Function.fromFunctionArn(
         this,
@@ -146,16 +135,26 @@ export class SRGPythonStack extends cdk.Stack {
       )
     );
 
+    const lambdaTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      'srg-rust-lambda-tg',
+      {
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        vpc: ec2.Vpc.fromLookup(this, 'jh-imported-vpc-tg-2', {
+          vpcId: props.aws_env.AWS_VPC_ID,
+        }),
+        targets: [lambdaTarget],
+      }
+    );
+
     importedALBListener.addTargetGroups('srg-rust-tg', {
       targetGroups: [lambdaTargetGroup],
       priority: 19,
       conditions: [
         elbv2.ListenerCondition.hostHeaders(['data.stravareportgenerator.com']),
-        elbv2.ListenerCondition.pathPatterns(['/srg-auth/*']),
+        elbv2.ListenerCondition.pathPatterns(['/srg-auth/tokens']),
       ],
     });
-
-    lambdaTarget.attachToApplicationTargetGroup(lambdaTargetGroup);
 
     importedALBListener.addTargetGroups('srg-listener-tg', {
       targetGroups: [targetGroup],
