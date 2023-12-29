@@ -98,18 +98,21 @@ def refresh_tokens(athlete_id, refresh_token):
 
 
 def fetch_tokens(athlete_id):
-    # dynamodb = boto3.resource('dynamodb')
-    # tokens_table = dynamodb.Table('srg-token-table')
-    # response = tokens_table.get_item(
-    #     Key={
-    #         'athleteId': athlete_id
-    #     },
-    # )
-    # if 'Item' in response:
-    #     return response['Item']
-    # else:
-    #     raise ClientError(
-    #         {'Error': {'Message': 'No athlete_id token found'}}, 'fetch_tokens')
+    dynamodb = boto3.resource('dynamodb')
+    tokens_table = dynamodb.Table('srg-token-table')
+    response = tokens_table.get_item(
+        Key={
+            'athleteId': athlete_id
+        },
+    )
+    if 'Item' in response:
+        return response['Item']
+    else:
+        raise ClientError(
+            {'Error': {'Message': 'No athlete_id token found'}}, 'fetch_tokens')
+
+
+def fetch_tokens_rs(athlete_id):
     lambda_client = boto3.client('lambda')
     function_name = 'rust-fetch-tokens-lambda'
     payload_dict = {
@@ -130,7 +133,7 @@ def fetch_tokens(athlete_id):
 
 def get_access_token_from_athlete_id(athlete_id):
     pprint(athlete_id)
-    tokens = fetch_tokens(athlete_id)
+    tokens = fetch_tokens_rs(athlete_id)
 
     # Check to see if the token is expired
     now = time.time()
