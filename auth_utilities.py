@@ -133,7 +133,7 @@ def fetch_tokens_rs(athlete_id):
 
 def get_access_token_from_athlete_id(athlete_id):
     pprint(athlete_id)
-    tokens = fetch_tokens_rs(athlete_id)
+    tokens = fetch_tokens(athlete_id)
 
     # Check to see if the token is expired
     now = time.time()
