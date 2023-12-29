@@ -2,6 +2,7 @@ import os
 import time
 from flask import request, redirect, make_response
 import requests
+import json
 import boto3
 from pprint import pprint
 from botocore.exceptions import ClientError
@@ -97,18 +98,34 @@ def refresh_tokens(athlete_id, refresh_token):
 
 
 def fetch_tokens(athlete_id):
-    dynamodb = boto3.resource('dynamodb')
-    tokens_table = dynamodb.Table('srg-token-table')
-    response = tokens_table.get_item(
-        Key={
-            'athleteId': athlete_id
-        },
+    # dynamodb = boto3.resource('dynamodb')
+    # tokens_table = dynamodb.Table('srg-token-table')
+    # response = tokens_table.get_item(
+    #     Key={
+    #         'athleteId': athlete_id
+    #     },
+    # )
+    # if 'Item' in response:
+    #     return response['Item']
+    # else:
+    #     raise ClientError(
+    #         {'Error': {'Message': 'No athlete_id token found'}}, 'fetch_tokens')
+    lambda_client = boto3.client('lambda')
+    function_name = 'rust-fetch-tokens-lambda'
+    payload_dict = {
+        "queryStringParameters": {
+            "athleteId": athlete_id
+        }
+    }
+    payload = json.dumps(payload_dict)
+    response = lambda_client.invoke(
+        FunctionName=function_name,
+        InvocationType='RequestResponse',
+        Payload=payload
     )
-    if 'Item' in response:
-        return response['Item']
-    else:
-        raise ClientError(
-            {'Error': {'Message': 'No athlete_id token found'}}, 'fetch_tokens')
+
+    response_payload = json.loads(response['Payload'].read())
+    return response_payload['data']
 
 
 def get_access_token_from_athlete_id(athlete_id):
