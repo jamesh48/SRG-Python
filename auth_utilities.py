@@ -105,11 +105,8 @@ def fetch_tokens(athlete_id):
             'athleteId': athlete_id
         },
     )
-    if 'Item' in response:
-        return response['Item']
-    else:
-        raise ClientError(
-            {'Error': {'Message': 'No athlete_id token found'}}, 'fetch_tokens')
+
+    return response['Item']
 
 
 def fetch_tokens_rs(athlete_id):
@@ -132,7 +129,6 @@ def fetch_tokens_rs(athlete_id):
 
 
 def get_access_token_from_athlete_id(athlete_id):
-    pprint(athlete_id)
     tokens = fetch_tokens(athlete_id)
 
     # Check to see if the token is expired

@@ -13,7 +13,12 @@ data_controller_bp = Blueprint('data_controller', __name__)
 
 @data_controller_bp.route('/srg/getUserSettings', methods=['GET'])
 def route_get_user_settings():
-    return get_user_settings()
+    try:
+        return get_user_settings()
+    except Exception as e:
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 500)
+        return response
 
 
 def get_user_settings():
@@ -29,15 +34,11 @@ def get_user_settings_req(athlete_id):
             'athleteId': athlete_id
         },
     )
-    if 'Item' in response:
-        user_settings_only = {
-            "defaultSport": response['Item']['defaultSport'],
-            "defaultFormat": response['Item']['defaultFormat']
-        }
-        return user_settings_only
-    else:
-        raise ClientError(
-            {'Error': {'Message': 'No athlete_id token found'}}, 'user_settings')
+    user_settings_only = {
+        "defaultSport": response['Item']['defaultSport'],
+        "defaultFormat": response['Item']['defaultFormat']
+    }
+    return user_settings_only
 
 
 @data_controller_bp.route('/srg/saveUserSettings', methods=['POST'])
@@ -207,7 +208,13 @@ def get_logged_in_user_req(access_token):
 
 @data_controller_bp.route('/srg/getAthleteStats/<athleteId>', methods=["GET"])
 def route_get_athlete_stats(athleteId):
-    return fetch_athlete_stats(athleteId)
+    try:
+        return fetch_athlete_stats(athleteId)
+    except Exception as e:
+        error_message = str(e)
+        pprint(error_message)
+        response = make_response(jsonify({'error': error_message}), 500)
+        return response
 
 
 def fetch_athlete_stats(athleteId):
@@ -388,5 +395,4 @@ def put_activity_update_req(access_token, entry_id, name, description):
         url, headers={"Authorization": f"Bearer { access_token }"}
     )
     r = r.json()
-    pprint(r)
     return r
