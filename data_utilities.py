@@ -10,6 +10,35 @@ from concurrent.futures import ThreadPoolExecutor
 data_controller_bp = Blueprint('data_controller', __name__)
 
 
+@data_controller_bp.route('/srg/saveUserSettings', methods=['POST'])
+def route_save_user_settings():
+    return save_user_settings();
+
+def save_user_settings():
+    srg_athlete_id = request.args.get('srg_athlete_id')
+    if request.is_json:
+        json_data = request.get_json()
+        default_sport = json_data['defaultSport']
+        default_format = json_data['defaultFormat']
+        save_user_settings_req(srg_athlete_id, default_sport, default_format)
+        return jsonify({'status': 'success', 'message': 'Saved User Settings'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON payload'})
+
+def save_user_settings_req(srg_athlete_id, default_sport, default_format):
+    dynamodb = boto3.resource('dynamodb')
+    key = { 'athleteId': srg_athlete_id }
+    update_expression = 'SET #defaultSportAttr = :defaultSportValue, #defaultFormatAttr = :defaultFormatValue'
+    expression_attribute_names = {'#defaultSportAttr': 'defaultSport', '#defaultFormatAttr': 'defaultFormat'}
+    expression_attribute_values = {':defaultSportValue': default_sport, ':defaultFormatValue': default_format}
+    table = dynamodb.Table('srg-token-table')
+    table.update_item(
+        Key=key,
+        UpdateExpression=update_expression,
+        ExpressionAttributeNames=expression_attribute_names, ExpressionAttributeValues=expression_attribute_values
+    )
+    return 'ok'
+
 @data_controller_bp.route('/srg/entryKudos/<entryId>', methods=["GET"])
 def route_fetch_entry_kudoers(entryId):
     return fetch_entry_kudoers(entryId)
