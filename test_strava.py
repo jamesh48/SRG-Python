@@ -5,7 +5,7 @@ from pprint import pprint
 from auth_utilities import fetch_tokens, upsert_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req, save_user_settings_req
+from data_utilities import fetch_all_activities_strava_req,                fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req, save_user_settings_req, get_user_settings_req
 
 
 def create_token_table():
@@ -82,12 +82,14 @@ def test_fetch_individual_entry_from_strava(self):
     individual_entry = json.loads(individual_entry)
     assert "resource_state" in individual_entry
 
+
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_kudoers(self):
     kudoers = fetch_entry_kudoers_req('12345', '54321')
     assert len(kudoers) == 2
     assert kudoers[0]['firstname'] == 'Joe'
     assert kudoers[1]['firstname'] == 'Gordon'
+
 
 @mock.patch('requests.put', side_effect=mocked_requests_get)
 def test_update_entry_in_strava(self):
@@ -196,6 +198,23 @@ def test_fetch_tokens():
     assert "accessToken" in tokens
     assert "refreshToken" in tokens
 
+
+@mock_dynamodb
+def test_get_user_settings():
+    table = create_token_table()
+    table.put_item(Item={
+        'athleteId': '123456789',
+        'accessToken': '13579',
+        'refreshToken': '24680',
+        'defaultSport': 'running',
+        'defaultFormat': 'speedDesc'
+    })
+
+    user_settings = get_user_settings_req('123456789')
+    assert 'defaultSport' in user_settings
+    assert 'defaultFormat' in user_settings
+
+
 @mock_dynamodb
 def test_save_user_settings():
     table = create_token_table()
@@ -213,6 +232,7 @@ def test_save_user_settings():
     assert 'defaultSport' in tokens['Items'][0]
     assert 'athleteId' in tokens['Items'][0]
 
+
 @mock_dynamodb
 def test_destroy_user_tokens():
     table = create_token_table()
@@ -224,7 +244,6 @@ def test_destroy_user_tokens():
     destroy_user_tokens_req('123456789')
     activities = table.scan()
     assert not activities['Items']
-
 
 
 @mock_dynamodb
