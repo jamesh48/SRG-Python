@@ -18,6 +18,7 @@ def route_get_user_settings():
 
 def get_user_settings():
     srg_athlete_id = request.args.get('srg_athlete_id')
+    return get_user_settings_req(srg_athlete_id)
 
 
 def get_user_settings_req(athlete_id):
