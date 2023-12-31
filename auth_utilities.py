@@ -64,16 +64,28 @@ def upsert_tokens(tokens):
     try:
         dynamodb = boto3.resource('dynamodb')
         tokens_table = dynamodb.Table('srg-token-table')
-        response = tokens_table.put_item(
-            Item={
-                "athleteId": tokens['athlete_id'],
-                "accessToken": tokens['access_token'],
-                "refreshToken": tokens['refresh_token'],
-                "expiresAt": tokens['expires_at']
-            }
+        key = {'athleteId': tokens['athlete_id']}
+
+        update_expression = 'SET #accessTokenAttr = :accessTokenValue, #refreshTokenAttr = :refreshTokenValue, #expiresAtAttr = :expiresAtValue'
+
+        expression_attribute_names = {
+            '#accessTokenAttr': 'accessToken',
+            '#refreshTokenAttr': 'refreshToken',
+            '#expiresAtAttr': 'expiresAt'
+        }
+        expression_attribute_values = {
+            ':accessTokenValue': tokens['access_token'],
+            ':refreshTokenValue': tokens['refresh_token'],
+            ':expiresAtValue': tokens['expires_at']
+        }
+        response = tokens_table.update_item(
+            Key=key,
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=expression_attribute_names, ExpressionAttributeValues=expression_attribute_values
         )
         return response
     except Exception as e:
+        pprint(e)
         return e
 
 

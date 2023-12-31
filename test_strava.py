@@ -115,6 +115,7 @@ def test_refresh_tokens(self):
     table = create_token_table()
     access_token = refresh_tokens('13579', '246810')
     strava_tokens = table.scan()
+    assert len(strava_tokens['Items']) == 1
     strava_tokens = strava_tokens['Items'][0]
     assert access_token == "12345"
     assert strava_tokens['accessToken'] == "12345"
@@ -141,6 +142,7 @@ def test_upsert_tokens():
     })
 
     r = table.scan()
+    assert len(r['Items']) == 1
     r = r['Items'][0]
     assert r['athleteId'] == '123456789'
     assert r['accessToken'] == '24680'
