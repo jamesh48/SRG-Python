@@ -151,6 +151,36 @@ def test_upsert_tokens():
 
 
 @mock_dynamodb
+def test_shared_tokens_and_settings():
+    table = create_token_table()
+    # Table Starts with User Settings
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'accessToken': '13579',
+            'refreshToken': '24680',
+            'expiresAt': '1702926029',
+            'defaultSport': 'Run',
+            'defaultFormat': "speedDesc"
+        }
+    )
+    # New Tokens Are Loaded
+    upsert_tokens(tokens={
+        'athlete_id': '123456789',
+        'access_token': '24680',
+        'refresh_token': '13579',
+        'expires_at': '1702926653'
+    })
+
+    # User Settings should Persist
+    r = table.scan()
+    assert len(r['Items']) == 1
+    r = r['Items'][0]
+    assert 'defaultSport' in r
+    assert 'defaultFormat' in r
+
+
+@mock_dynamodb
 def test_fetch_all_activities_same_user():
     table = create_activities_table()
     table.put_item(
