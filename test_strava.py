@@ -2,7 +2,7 @@ import boto3
 import json
 import pytest
 from pprint import pprint
-from auth_utilities import fetch_tokens, upsert_tokens
+from auth_utilities import fetch_tokens, upsert_tokens, refresh_tokens
 from moto import mock_dynamodb
 from unittest import mock
 from data_utilities import fetch_all_activities_strava_req,                fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req, save_user_settings_req, get_user_settings_req
@@ -47,22 +47,27 @@ def mocked_requests_get(*args, **kwargs):
 
         def json(self):
             return self.json_data
+
     # Entry Kudos Test
-    if args[0].startswith('https://www.strava.com/api/v3/activities/12345/kudos'):
+    if args and args[0].startswith('https://www.strava.com/api/v3/activities/12345/kudos'):
         with open('testing_fixtures/fetch_entry_kudos.json', 'r') as file:
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
-    elif args[0].startswith('https://www.strava.com/api/v3/activities/12345?name=testname&description=testdescription'):
+    elif 'url' in kwargs and kwargs['url'].startswith('https://www.strava.com/api/v3/oauth/token'):
+        with open('testing_fixtures/refresh_token_strava.json', 'r') as file:
+            mock_data = json.load(file)
+        return MockResponse(mock_data, 200)
+    elif args and args[0].startswith('https://www.strava.com/api/v3/activities/12345?name=testname&description=testdescription'):
         with open('testing_fixtures/update_one_activity_strava.json', 'r') as file:
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
     # Individual Entry Test
-    elif args[0].startswith('https://www.strava.com/api/v3/activities/12345'):
+    elif args and args[0].startswith('https://www.strava.com/api/v3/activities/12345'):
         with open('testing_fixtures/fetch_individual_entry_strava.json', 'r') as file:
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
     # All Activities Test
-    elif args[0].startswith('https://www.strava.com/api/v3/activities'):
+    elif args and args[0].startswith('https://www.strava.com/api/v3/activities'):
         with open('testing_fixtures/fetch_all_activities_strava.json', 'r') as file:
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
@@ -90,6 +95,8 @@ def test_fetch_kudoers(self):
     assert kudoers[0]['firstname'] == 'Joe'
     assert kudoers[1]['firstname'] == 'Gordon'
 
+###### Tests! ######
+
 
 @mock.patch('requests.put', side_effect=mocked_requests_get)
 def test_update_entry_in_strava(self):
@@ -101,7 +108,18 @@ def test_update_entry_in_strava(self):
     )
     assert 'achievement_count' in test
 
-###### Tests! ######
+
+@mock.patch('requests.post', side_effect=mocked_requests_get)
+@mock_dynamodb
+def test_refresh_tokens(self):
+    table = create_token_table()
+    access_token = refresh_tokens('13579', '246810')
+    strava_tokens = table.scan()
+    strava_tokens = strava_tokens['Items'][0]
+    assert access_token == "12345"
+    assert strava_tokens['accessToken'] == "12345"
+    assert strava_tokens['refreshToken'] == "246810"
+    assert strava_tokens['expiresAt'] == "10000"
 
 
 @mock_dynamodb
