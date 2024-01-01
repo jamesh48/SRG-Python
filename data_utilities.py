@@ -36,7 +36,8 @@ def get_user_settings_req(athlete_id):
     )
     user_settings_only = {
         "defaultSport": response['Item']['defaultSport'],
-        "defaultFormat": response['Item']['defaultFormat']
+        "defaultFormat": response['Item']['defaultFormat'],
+        'defaultDate': response['Item']['defaultDate']
     }
     return user_settings_only
 
