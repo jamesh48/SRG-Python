@@ -257,12 +257,14 @@ def test_get_user_settings():
         'accessToken': '13579',
         'refreshToken': '24680',
         'defaultSport': 'running',
+        'defaultDate': 'allTime',
         'defaultFormat': 'speedDesc'
     })
 
     user_settings = get_user_settings_req('123456789')
     assert 'defaultSport' in user_settings
     assert 'defaultFormat' in user_settings
+    assert 'defaultDate' in user_settings
 
 
 @mock_dynamodb
@@ -274,12 +276,13 @@ def test_save_user_settings():
         'refreshToken': '24680'
     })
 
-    save_user_settings_req('123456789', 'running', 'speedDesc')
+    save_user_settings_req('123456789', 'running', 'speedDesc', 'allTime')
 
     tokens = table.scan()
     assert tokens['Items'][0]
     assert 'defaultFormat' in tokens['Items'][0]
     assert 'defaultSport' in tokens['Items'][0]
+    assert 'defaultDate' in tokens['Items'][0]
     assert 'athleteId' in tokens['Items'][0]
 
 
