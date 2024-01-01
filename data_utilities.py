@@ -52,20 +52,26 @@ def save_user_settings():
         json_data = request.get_json()
         default_sport = json_data['defaultSport']
         default_format = json_data['defaultFormat']
-        save_user_settings_req(srg_athlete_id, default_sport, default_format)
+        default_date = json_data['defaultDate']
+        save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date)
         return jsonify({'status': 'success', 'message': 'Saved User Settings'})
     else:
         return jsonify({'status': 'error', 'message': 'Invalid JSON payload'})
 
-
-def save_user_settings_req(srg_athlete_id, default_sport, default_format):
+def save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date):
     dynamodb = boto3.resource('dynamodb')
-    key = {'athleteId': srg_athlete_id}
-    update_expression = 'SET #defaultSportAttr = :defaultSportValue, #defaultFormatAttr = :defaultFormatValue'
+    key = { 'athleteId': srg_athlete_id }
+    update_expression = 'SET #defaultSportAttr = :defaultSportValue, #defaultFormatAttr = :defaultFormatValue, #defaultDateAttr = :defaultDateValue'
     expression_attribute_names = {
-        '#defaultSportAttr': 'defaultSport', '#defaultFormatAttr': 'defaultFormat'}
+        '#defaultSportAttr': 'defaultSport',
+        '#defaultFormatAttr': 'defaultFormat',
+        '#defaultDateAttr': 'defaultDate'
+      }
     expression_attribute_values = {
-        ':defaultSportValue': default_sport, ':defaultFormatValue': default_format}
+        ':defaultSportValue': default_sport,
+        ':defaultFormatValue': default_format,
+        ':defaultDateValue': default_date
+      }
     table = dynamodb.Table('srg-token-table')
     table.update_item(
         Key=key,
