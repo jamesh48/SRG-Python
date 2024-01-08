@@ -5,6 +5,7 @@ from pprint import pprint
 from auth_utilities import get_access_token_from_athlete_id
 from flask import Blueprint, make_response, request, jsonify
 from decimal import Decimal
+from urllib.parse import quote
 from botocore.exceptions import ClientError
 from concurrent.futures import ThreadPoolExecutor
 
@@ -196,6 +197,8 @@ def route_get_logged_in_user():
 
 def get_logged_in_user():
     srg_athlete_id = request.args.get('srg_athlete_id')
+    pprint("HERE")
+    pprint(srg_athlete_id)
     access_token = get_access_token_from_athlete_id(srg_athlete_id)
     r = get_logged_in_user_req(access_token)
     return json.dumps(r)
@@ -397,7 +400,9 @@ def update_one_activity_req(athleteId, activityId, name):
 
 
 def put_activity_update_req(access_token, entry_id, name, description):
-    url = f"https://www.strava.com/api/v3/activities/{entry_id}?name={name}&description={description}"
+    encoded_name = quote(name)
+    encoded_description = quote(description)
+    url = f"https://www.strava.com/api/v3/activities/{entry_id}?name={encoded_name}&description={encoded_description}"
     r = requests.put(
         url, headers={"Authorization": f"Bearer { access_token }"}
     )
