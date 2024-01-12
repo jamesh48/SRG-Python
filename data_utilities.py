@@ -36,6 +36,7 @@ def get_user_settings_req(athlete_id):
         },
     )
     user_settings_only = {
+        "darkMode": response['Item']['darkMode'],
         "defaultSport": response['Item']['defaultSport'],
         "defaultFormat": response['Item']['defaultFormat'],
         'defaultDate': response['Item']['defaultDate']
@@ -55,24 +56,27 @@ def save_user_settings():
         default_sport = json_data['defaultSport']
         default_format = json_data['defaultFormat']
         default_date = json_data['defaultDate']
-        save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date)
+        dark_mode = json_data['darkMode']
+        save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date, dark_mode)
         return jsonify({'status': 'success', 'message': 'Saved User Settings'})
     else:
         return jsonify({'status': 'error', 'message': 'Invalid JSON payload'})
 
-def save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date):
+def save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date, dark_mode):
     dynamodb = boto3.resource('dynamodb')
     key = { 'athleteId': srg_athlete_id }
-    update_expression = 'SET #defaultSportAttr = :defaultSportValue, #defaultFormatAttr = :defaultFormatValue, #defaultDateAttr = :defaultDateValue'
+    update_expression = 'SET #defaultSportAttr = :defaultSportValue, #defaultFormatAttr = :defaultFormatValue, #defaultDateAttr = :defaultDateValue, #darkModeAttr = :darkModeValue'
     expression_attribute_names = {
         '#defaultSportAttr': 'defaultSport',
         '#defaultFormatAttr': 'defaultFormat',
-        '#defaultDateAttr': 'defaultDate'
+        '#defaultDateAttr': 'defaultDate',
+        '#darkModeAttr': 'darkMode'
       }
     expression_attribute_values = {
         ':defaultSportValue': default_sport,
         ':defaultFormatValue': default_format,
-        ':defaultDateValue': default_date
+        ':defaultDateValue': default_date,
+        ':darkModeValue': dark_mode
       }
     table = dynamodb.Table('srg-token-table')
     table.update_item(
