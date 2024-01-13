@@ -57,27 +57,29 @@ def save_user_settings():
         default_format = json_data['defaultFormat']
         default_date = json_data['defaultDate']
         dark_mode = json_data['darkMode']
-        save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date, dark_mode)
+        save_user_settings_req(srg_athlete_id, default_sport,
+                               default_format, default_date, dark_mode)
         return jsonify({'status': 'success', 'message': 'Saved User Settings'})
     else:
         return jsonify({'status': 'error', 'message': 'Invalid JSON payload'})
 
+
 def save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date, dark_mode):
     dynamodb = boto3.resource('dynamodb')
-    key = { 'athleteId': srg_athlete_id }
+    key = {'athleteId': srg_athlete_id}
     update_expression = 'SET #defaultSportAttr = :defaultSportValue, #defaultFormatAttr = :defaultFormatValue, #defaultDateAttr = :defaultDateValue, #darkModeAttr = :darkModeValue'
     expression_attribute_names = {
         '#defaultSportAttr': 'defaultSport',
         '#defaultFormatAttr': 'defaultFormat',
         '#defaultDateAttr': 'defaultDate',
         '#darkModeAttr': 'darkMode'
-      }
+    }
     expression_attribute_values = {
         ':defaultSportValue': default_sport,
         ':defaultFormatValue': default_format,
         ':defaultDateValue': default_date,
         ':darkModeValue': dark_mode
-      }
+    }
     table = dynamodb.Table('srg-token-table')
     table.update_item(
         Key=key,
@@ -114,6 +116,28 @@ def fetch_entry_comments_req(entry_id, access_token):
         url, headers={"Authorization": f"Bearer { access_token }"})
     r = r.json()
     return r
+
+
+@data_controller_bp.route('/srg/generalIndividualEntry/<athlete_id>/<activity_id>', methods=['GET'])
+def route_fetch_general_individual_entry(athlete_id, activity_id):
+    return fetch_general_individual_entry(athlete_id, activity_id)
+
+
+def fetch_general_individual_entry(athlete_id, activity_id):
+    dynamodb = boto3.resource('dynamodb')
+    activities_table = dynamodb.Table('srg-activities-table')
+    response = activities_table.query(
+        KeyConditionExpression="#athlete_id = :athlete_id AND #activity_id = :activity_id",
+        ExpressionAttributeNames={
+            '#athlete_id': 'athleteId',
+            "#activity_id": "activityId",
+        },
+        ExpressionAttributeValues={
+            ':athlete_id': athlete_id,
+            ":activity_id": activity_id,
+        }
+    )
+    return response['Items'][0]
 
 
 @data_controller_bp.route('/srg/individualEntry/<entryId>', methods=["GET"])
