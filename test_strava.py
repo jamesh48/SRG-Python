@@ -5,7 +5,7 @@ from pprint import pprint
 from auth_utilities import fetch_tokens, upsert_tokens, refresh_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_strava_req,                fetch_all_activities_req, fetch_individual_entry_req, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req, save_user_settings_req, get_user_settings_req
+from data_utilities import fetch_all_activities_strava_req,                fetch_all_activities_req, fetch_individual_entry_req, upload_individual_entry_data_to_db, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req, save_user_settings_req, get_user_settings_req, fetch_general_individual_entry
 
 
 def create_token_table():
@@ -62,7 +62,7 @@ def mocked_requests_get(*args, **kwargs):
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
     # Individual Entry Test
-    elif args and args[0].startswith('https://www.strava.com/api/v3/activities/12345'):
+    elif args and args[0].startswith('https://www.strava.com/api/v3/activities/1624305483'):
         with open('testing_fixtures/fetch_individual_entry_strava.json', 'r') as file:
             mock_data = json.load(file)
         return MockResponse(mock_data, 200)
@@ -81,11 +81,64 @@ def test_fetch_all_strava_activities(self):
     assert "resource_state" in all_activities[0]
 
 
+# Strava Test
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_individual_entry_from_strava(self):
-    individual_entry = fetch_individual_entry_req('12345', '24680')
+    individual_entry = fetch_individual_entry_req('1624305483', '24680')
     individual_entry = json.loads(individual_entry)
     assert "resource_state" in individual_entry
+
+# DynamoDB Test
+
+
+@mock_dynamodb
+def test_upload_individual_entry_data_to_db():
+    table = create_activities_table()
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'activityId': '987654321',
+            'name': 'Activity Name to Change',
+            'location_city': 'Atlantis'
+        }
+    )
+    upload_individual_entry_data_to_db(
+        {
+            "description": "New Individual Entry Description",
+            "device_name": "Apple Watch Series 5",
+            "gear": {
+                "name": "Brooks Ghost 13"
+            },
+            "map": {
+                "polyline": "egpsFfr~`SKG_@cAEMAc@JaAJgCAc@Ba@Go@CcBHm@@_@QkCAg@@ULy@AQa@EY?i@EyABs@K_@@]Ao@FYAuA@g@C[Dk@As@?[?kAUo@AG@OFwDA_BFgBEe@DyB?mAHIFCN?LDlAEp@AjA@rACv@@|@ApCBz@CvADfEAvBEhBBv@AvABjACj@BpCCj@@~@CrCBjB?nCClBCx@AlCD~@Cx@Bh@CpBBxFCp@@XDP?ZCx@Bz@ExD@rAEnCB`@@zA?vCBf@HHl@H`BH|AAl@Jh@LnAz@XZf@x@\\z@Nd@b@pBDh@BtAO`B?VQz@Cd@?NNNZH`@Al@Kh@@LBPGHAP?l@Hz@E\\Bz@Pf@R`@^l@~@N^XtBItGBtBAfBBzB@NFFzAKtBHlBIj@BbA?`ADlAA\\@fACl@Bn@An@B|BAr@HNDJ`@FHPHRBf@AVDt@?h@Cp@K~@Eh@BlAEj@?n@EZD\\@r@IzBH~CAJ@z@@TEx@?\\B\\C^@HC|@Br@A`ADdBIdBFnAIZ@n@CHBP@jBCp@F~BJdAF^GZADQLaB?cDDcAAkA@Q@wACkABgEGmA@aBCmABqACa@@g@Fg@GwGByAE{EBi@AqAB{DGuDAcDFiDGoBBmA?o@GiAF{@@s@?cBGsDDmEGmADkCIsB?iAGk@@OQuA]iAU_@MKOOKUSw@Yq@Yw@[k@_AgCWkASc@K_@E_@_@yA[sCEwAFyDA_CHyCEoABMKhF@d@Ez@B`AEvA@xAJpAB|@TpBVnAh@hAZjAp@hBz@fB`@dAXhANV?IKc@M[iAkCm@eAiA_E_@w@SaAGy@OkAMqBEmBDk@EkADoDK{@GMQKKAQ@uAP]@KCeAk@_BU",
+            },
+            "photos": {
+                "primary": {
+                    "unique_id": "FE5A6821-DC24-4C0B-8ED8-7D6E3104C72C",
+                    "urls": {
+                        "100": "https://dgtzuqphqg23d.cloudfront.net/73Kj3WBJvWIHJeP_5aOZxW-L5dP_0StLmh-yNVmu3Ws-128x117.jpg",
+                        "600": "https://dgtzuqphqg23d.cloudfront.net/73Kj3WBJvWIHJeP_5aOZxW-L5dP_0StLmh-yNVmu3Ws-768x707.jpg"
+                    },
+                    "source": 1,
+                    "media_type": 1
+                },
+                "use_primary_photo": True,
+                "count": 3
+            },
+        }, '123456789', '987654321')
+    result = table.scan()
+    result = result['Items'][0]
+    # Old Data is Persisted
+    assert 'description' in result
+    assert 'athleteId' in result
+    assert 'activityId' in result
+    assert 'location_city' in result
+    # New Data in Introduced
+    assert 'individualActivityCached' in result
+    assert 'primaryPhotoUrl' in result
+    assert 'deviceName' in result
+    assert 'gearName' in result
+    assert 'mapPolyline' in result
 
 
 @mock.patch('requests.get', side_effect=mocked_requests_get)
@@ -278,7 +331,8 @@ def test_save_user_settings():
         'refreshToken': '24680'
     })
 
-    save_user_settings_req('123456789', 'running', 'speedDesc', 'allTime', True)
+    save_user_settings_req('123456789', 'running',
+                           'speedDesc', 'allTime', True)
 
     tokens = table.scan()
     assert tokens['Items'][0]
@@ -356,3 +410,31 @@ def test_update_one_activity():
     assert 'location_city' in activities[0]
     assert activities[0]['location_city'] == 'Atlantis'
     assert activities[0]['name'] == 'Activity Name has Changed!'
+
+
+@mock_dynamodb
+def test_fetch_shared_activity():
+    table = create_activities_table()
+    table.put_item(
+        Item={
+            'athleteId': '123456789',
+            'activityId': '987654321',
+            'name': 'Activity Name',
+            'location_city': 'Atlantis',
+            'individualActivityCached': True,
+            'primaryPhotoUrl': 'https://dgtzuqphqg23d.cloudfront.net/73Kj3WBJvWIHJeP_5aOZxW-L5dP_0StLmh-yNVmu3Ws-768x707.jpg', 'description': 'New Individual Entry Description',
+            'deviceName': 'Apple Watch Series 5',
+            'gearName': 'Brooks Ghost 13',
+            'mapPolyline': 'egpsFfr~`SKG_@cAEMAc@JaAJgCAc@Ba@Go@CcBHm@@_@QkCAg@@ULy@AQa@EY?i@EyABs@K_@@]Ao@FYAuA@g@C[Dk@As@?[?kAUo@AG@OFwDA_BFgBEe@DyB?mAHIFCN?LDlAEp@AjA@rACv@@|@ApCBz@CvADfEAvBEhBBv@AvABjACj@BpCCj@@~@CrCBjB?nCClBCx@AlCD~@Cx@Bh@CpBBxFCp@@XDP?ZCx@Bz@ExD@rAEnCB`@@zA?vCBf@HHl@H`BH|AAl@Jh@LnAz@XZf@x@\\z@Nd@b@pBDh@BtAO`B?VQz@Cd@?NNNZH`@Al@Kh@@LBPGHAP?l@Hz@E\\Bz@Pf@R`@^l@~@N^XtBItGBtBAfBBzB@NFFzAKtBHlBIj@BbA?`ADlAA\\@fACl@Bn@An@B|BAr@HNDJ`@FHPHRBf@AVDt@?h@Cp@K~@Eh@BlAEj@?n@EZD\\@r@IzBH~CAJ@z@@TEx@?\\B\\C^@HC|@Br@A`ADdBIdBFnAIZ@n@CHBP@jBCp@F~BJdAF^GZADQLaB?cDDcAAkA@Q@wACkABgEGmA@aBCmABqACa@@g@Fg@GwGByAE{EBi@AqAB{DGuDAcDFiDGoBBmA?o@GiAF{@@s@?cBGsDDmEGmADkCIsB?iAGk@@OQuA]iAU_@MKOOKUSw@Yq@Yw@[k@_AgCWkASc@K_@E_@_@yA[sCEwAFyDA_CHyCEoABMKhF@d@Ez@B`AEvA@xAJpAB|@TpBVnAh@hAZjAp@hBz@fB`@dAXhANV?IKc@M[iAkCm@eAiA_E_@w@SaAGy@OkAMqBEmBDk@EkADoDK{@GMQKKAQ@uAP]@KCeAk@_BU'
+        }
+    )
+    response = fetch_general_individual_entry('123456789', '987654321')
+    assert 'athleteId' in response
+    assert 'activityId' in response
+    assert '600' in response.get('photos').get('primary').get('urls')
+    assert 'name' in response.get('gear')
+    assert 'device_name' in response
+    assert 'polyline' in response.get('map')
+    assert 'description' in response
+    #
+    assert not 'mapPolyline' in response

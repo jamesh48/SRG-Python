@@ -137,7 +137,32 @@ def fetch_general_individual_entry(athlete_id, activity_id):
             ":activity_id": activity_id,
         }
     )
-    return response['Items'][0]
+    response = response['Items'][0]
+    new_response = {**response,
+                    "gear": {
+                        "name": response.get('gearName')
+                    },
+                    "map": {
+                        "polyline": response.get('mapPolyline')
+                    },
+                    "device_name": response.get('deviceName'),
+                    "photos": {
+                        "primary": {
+                            "urls": {
+                                "600": response.get('primaryPhotoUrl')
+                            }
+                        }}
+                    }
+    keys_to_exclude = [
+        'mapPolyline',
+        'primaryPhotoUrl',
+        'deviceName',
+        'gearName'
+    ]
+    new_response_filtered = {
+        key: value for key, value in new_response.items() if key not in keys_to_exclude}
+
+    return new_response_filtered
 
 
 @data_controller_bp.route('/srg/individualEntry/<entryId>', methods=["GET"])
@@ -153,11 +178,57 @@ def fetch_individual_entry_req(entryId, access_token):
     return json.dumps(r)
 
 
-def fetch_individual_entry(entryId):
+def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
+    # data section #
+    activity_description = data.get('description', '')
+    device_name = data.get('device_name', '')
+    gear_name = data.get('gear', {}).get('name', '')
+    map_polyline = data.get('map', {}).get('polyline', '')
+    primary_photo_url = data.get('photos', {}).get(
+        'primary', {}).get('urls', {}).get('600', '')
+    # data captured in memory#
+
+    dynamodb = boto3.resource('dynamodb')
+    table_name = 'srg-activities-table'
+    table = dynamodb.Table(table_name)
+    key = {'athleteId': srg_athlete_id, 'activityId': entry_id}
+    update_expression = 'SET #indActivityHasBeenCachedAttr = :indActivityHasBeenCachedValue, #primaryPhotoAttr = :primaryPhotoValue, #activityDescriptionAttr = :activityDescriptionValue, #deviceNameAttr = :deviceNameValue, #gearNameAttr = :gearNameValue, #mapPolylineAttr = :mapPolylineValue'
+
+    expression_attribute_names = {
+        '#indActivityHasBeenCachedAttr': 'individualActivityCached',
+        '#primaryPhotoAttr': 'primaryPhotoUrl',
+        '#activityDescriptionAttr': 'description',
+        '#deviceNameAttr': 'deviceName',
+        '#gearNameAttr': 'gearName',
+        '#mapPolylineAttr': 'mapPolyline'
+    }
+    expression_attribute_values = {
+        ':indActivityHasBeenCachedValue': True,
+        ':primaryPhotoValue': primary_photo_url,
+        ':activityDescriptionValue': activity_description,
+        ':deviceNameValue': device_name,
+        ':gearNameValue': gear_name,
+        ':mapPolylineValue': map_polyline
+    }
+    table.update_item(
+        Key=key,
+        UpdateExpression=update_expression,
+        ExpressionAttributeNames=expression_attribute_names, ExpressionAttributeValues=expression_attribute_values
+    )
+    return 'ok'
+
+
+def fetch_individual_entry(entry_id):
     try:
         srg_athlete_id = request.args.get('srg_athlete_id')
+        is_cached = request.args.get('is_cached')
+        if is_cached:
+            data = fetch_general_individual_entry(srg_athlete_id, entry_id)
+            return data
+
         access_token = get_access_token_from_athlete_id(srg_athlete_id)
-        data = fetch_individual_entry_req(entryId, access_token)
+        data = fetch_individual_entry_req(entry_id, access_token)
+        upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id)
         return data
     except Exception as e:
         print("Exception")
