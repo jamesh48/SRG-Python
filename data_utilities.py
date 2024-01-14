@@ -179,6 +179,23 @@ def fetch_individual_entry_req(entryId, access_token):
     return r
 
 
+def fetch_individual_entry(entry_id):
+    try:
+        srg_athlete_id = request.args.get('srg_athlete_id')
+        is_cached = request.args.get('is_cached')
+        if is_cached == 'true':
+            data = fetch_general_individual_entry(srg_athlete_id, entry_id)
+            return data
+
+        access_token = get_access_token_from_athlete_id(srg_athlete_id)
+        data = fetch_individual_entry_req(entry_id, access_token)
+        upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id)
+        return data
+    except Exception as e:
+        print("Exception")
+        return ('<html><style>body { background-color: ivory }</style><div>Individual Entry Fetch Error:</div> <p>%s</p></html>' % e)
+
+
 def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
     # data section #
     activity_description = data.get('description', '')
@@ -217,23 +234,6 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
         ExpressionAttributeNames=expression_attribute_names, ExpressionAttributeValues=expression_attribute_values
     )
     return 'ok'
-
-
-def fetch_individual_entry(entry_id):
-    try:
-        srg_athlete_id = request.args.get('srg_athlete_id')
-        is_cached = request.args.get('is_cached')
-        if is_cached:
-            data = fetch_general_individual_entry(srg_athlete_id, entry_id)
-            return data
-
-        access_token = get_access_token_from_athlete_id(srg_athlete_id)
-        data = fetch_individual_entry_req(entry_id, access_token)
-        upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id)
-        return data
-    except Exception as e:
-        print("Exception")
-        return ('<html><style>body { background-color: ivory }</style><div>Individual Entry Fetch Error:</div> <p>%s</p></html>' % e)
 
 
 ####### All Activities #######
@@ -297,7 +297,6 @@ def route_get_logged_in_user():
 
 def get_logged_in_user():
     srg_athlete_id = request.args.get('srg_athlete_id')
-    pprint("HERE")
     pprint(srg_athlete_id)
     access_token = get_access_token_from_athlete_id(srg_athlete_id)
     r = get_logged_in_user_req(access_token)
