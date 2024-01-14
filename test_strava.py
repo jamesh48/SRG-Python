@@ -124,6 +124,7 @@ def test_upload_individual_entry_data_to_db():
                 "use_primary_photo": True,
                 "count": 3
             },
+            "laps": []
         }, '123456789', '987654321')
     result = table.scan()
     result = result['Items'][0]
@@ -424,6 +425,7 @@ def test_fetch_shared_activity():
             'primaryPhotoUrl': 'https://dgtzuqphqg23d.cloudfront.net/73Kj3WBJvWIHJeP_5aOZxW-L5dP_0StLmh-yNVmu3Ws-768x707.jpg', 'description': 'New Individual Entry Description',
             'deviceName': 'Apple Watch Series 5',
             'gearName': 'Brooks Ghost 13',
+            'laps': '[]',
             'mapPolyline': 'egpsFfr~`SKG_@cAEMAc@JaAJgCAc@Ba@Go@CcBHm@@_@QkCAg@@ULy@AQa@EY?i@EyABs@K_@@]Ao@FYAuA@g@C[Dk@As@?[?kAUo@AG@OFwDA_BFgBEe@DyB?mAHIFCN?LDlAEp@AjA@rACv@@|@ApCBz@CvADfEAvBEhBBv@AvABjACj@BpCCj@@~@CrCBjB?nCClBCx@AlCD~@Cx@Bh@CpBBxFCp@@XDP?ZCx@Bz@ExD@rAEnCB`@@zA?vCBf@HHl@H`BH|AAl@Jh@LnAz@XZf@x@\\z@Nd@b@pBDh@BtAO`B?VQz@Cd@?NNNZH`@Al@Kh@@LBPGHAP?l@Hz@E\\Bz@Pf@R`@^l@~@N^XtBItGBtBAfBBzB@NFFzAKtBHlBIj@BbA?`ADlAA\\@fACl@Bn@An@B|BAr@HNDJ`@FHPHRBf@AVDt@?h@Cp@K~@Eh@BlAEj@?n@EZD\\@r@IzBH~CAJ@z@@TEx@?\\B\\C^@HC|@Br@A`ADdBIdBFnAIZ@n@CHBP@jBCp@F~BJdAF^GZADQLaB?cDDcAAkA@Q@wACkABgEGmA@aBCmABqACa@@g@Fg@GwGByAE{EBi@AqAB{DGuDAcDFiDGoBBmA?o@GiAF{@@s@?cBGsDDmEGmADkCIsB?iAGk@@OQuA]iAU_@MKOOKUSw@Yq@Yw@[k@_AgCWkASc@K_@E_@_@yA[sCEwAFyDA_CHyCEoABMKhF@d@Ez@B`AEvA@xAJpAB|@TpBVnAh@hAZjAp@hBz@fB`@dAXhANV?IKc@M[iAkCm@eAiA_E_@w@SaAGy@OkAMqBEmBDk@EkADoDK{@GMQKKAQ@uAP]@KCeAk@_BU'
         }
     )
