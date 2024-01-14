@@ -175,7 +175,7 @@ def fetch_individual_entry_req(entryId, access_token):
     r = requests.get(
         url, headers={"Authorization": f"Bearer { access_token }"})
     r = r.json()
-    return json.dumps(r)
+    return r
 
 
 def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
