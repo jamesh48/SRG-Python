@@ -139,6 +139,7 @@ def fetch_general_individual_entry(athlete_id, activity_id):
     )
     response = response['Items'][0]
     new_response = {**response,
+                    "id": response.get('activityId'),
                     "gear": {
                         "name": response.get('gearName')
                     },

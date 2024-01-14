@@ -85,7 +85,6 @@ def test_fetch_all_strava_activities(self):
 @mock.patch('requests.get', side_effect=mocked_requests_get)
 def test_fetch_individual_entry_from_strava(self):
     individual_entry = fetch_individual_entry_req('1624305483', '24680')
-    individual_entry = json.loads(individual_entry)
     assert "resource_state" in individual_entry
 
 # DynamoDB Test
