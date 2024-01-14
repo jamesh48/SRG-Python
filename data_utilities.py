@@ -146,8 +146,10 @@ def fetch_general_individual_entry(athlete_id, activity_id):
                     "map": {
                         "polyline": response.get('mapPolyline')
                     },
+                    "laps": json.loads(response.get("laps")),
                     "device_name": response.get('deviceName'),
                     "photos": {
+                        "count": 1,
                         "primary": {
                             "urls": {
                                 "600": response.get('primaryPhotoUrl')
@@ -182,11 +184,6 @@ def fetch_individual_entry_req(entryId, access_token):
 def fetch_individual_entry(entry_id):
     try:
         srg_athlete_id = request.args.get('srg_athlete_id')
-        is_cached = request.args.get('is_cached')
-        if is_cached == 'true':
-            data = fetch_general_individual_entry(srg_athlete_id, entry_id)
-            return data
-
         access_token = get_access_token_from_athlete_id(srg_athlete_id)
         data = fetch_individual_entry_req(entry_id, access_token)
         upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id)
@@ -202,15 +199,20 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
     device_name = data.get('device_name', '')
     gear_name = data.get('gear', {}).get('name', '')
     map_polyline = data.get('map', {}).get('polyline', '')
-    primary_photo_url = data.get('photos', {}).get(
-        'primary', {}).get('urls', {}).get('600', '')
+    laps = json.dumps(data.get('laps', []))
+    primary_photo_url = data.get('photos', {}).get('primary', {})
+    if primary_photo_url is not None:
+        primary_photo_url = primary_photo_url.get('urls', {}).get('600', '')
+    else:
+        primary_photo_url = ''
+
     # data captured in memory#
 
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
     key = {'athleteId': srg_athlete_id, 'activityId': entry_id}
-    update_expression = 'SET #indActivityHasBeenCachedAttr = :indActivityHasBeenCachedValue, #primaryPhotoAttr = :primaryPhotoValue, #activityDescriptionAttr = :activityDescriptionValue, #deviceNameAttr = :deviceNameValue, #gearNameAttr = :gearNameValue, #mapPolylineAttr = :mapPolylineValue'
+    update_expression = 'SET #indActivityHasBeenCachedAttr = :indActivityHasBeenCachedValue, #primaryPhotoAttr = :primaryPhotoValue, #activityDescriptionAttr = :activityDescriptionValue, #deviceNameAttr = :deviceNameValue, #gearNameAttr = :gearNameValue, #mapPolylineAttr = :mapPolylineValue, #lapsAttr = :lapsValue'
 
     expression_attribute_names = {
         '#indActivityHasBeenCachedAttr': 'individualActivityCached',
@@ -218,7 +220,8 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
         '#activityDescriptionAttr': 'description',
         '#deviceNameAttr': 'deviceName',
         '#gearNameAttr': 'gearName',
-        '#mapPolylineAttr': 'mapPolyline'
+        '#lapsAttr': 'laps',
+        '#mapPolylineAttr': 'mapPolyline',
     }
     expression_attribute_values = {
         ':indActivityHasBeenCachedValue': True,
@@ -226,6 +229,7 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
         ':activityDescriptionValue': activity_description,
         ':deviceNameValue': device_name,
         ':gearNameValue': gear_name,
+        ':lapsValue': laps,
         ':mapPolylineValue': map_polyline
     }
     table.update_item(
