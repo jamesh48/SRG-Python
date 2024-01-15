@@ -478,7 +478,7 @@ def destroy_user_req(srg_athlete_id):
     )
 
     # Delete each item in parallel
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         executor.map(delete_item, [
                      (item['athleteId'], item['activityId']) for item in response.get('Items', [])])
 
