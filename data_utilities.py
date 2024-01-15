@@ -6,10 +6,15 @@ from auth_utilities import get_access_token_from_athlete_id
 from flask import Blueprint, make_response, request, jsonify
 from decimal import Decimal
 from urllib.parse import quote
+from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import ClientError
 from concurrent.futures import ThreadPoolExecutor
 
 data_controller_bp = Blueprint('data_controller', __name__)
+
+
+class RateLimitError(Exception):
+    pass
 
 
 @data_controller_bp.route('/srg/getUserSettings', methods=['GET'])
@@ -292,16 +297,17 @@ def fetch_all_activities():
 def route_get_logged_in_user():
     try:
         return get_logged_in_user()
+    except RateLimitError as e:
+        response = make_response(jsonify({'error': error_message}), 429)
+        return response
     except Exception as e:
         error_message = str(e)
-        pprint(error_message)
         response = make_response(jsonify({'error': error_message}), 500)
         return response
 
 
 def get_logged_in_user():
     srg_athlete_id = request.args.get('srg_athlete_id')
-    pprint(srg_athlete_id)
     access_token = get_access_token_from_athlete_id(srg_athlete_id)
     r = get_logged_in_user_req(access_token)
     return json.dumps(r)
@@ -313,8 +319,10 @@ def get_logged_in_user_req(access_token):
         url + '?access_token=' + access_token,
         params={'scope': 'activity:read_all'}
     )
-    r = r.json()
-    return r
+    r_json = r.json()
+    if 'errors' in r_json and any(error.get('code') == 'exceeded' for error in r_json['errors']):
+        raise RateLimitError('Rate Limit Exceeded')
+    return r_json
 
 ###### Get Logged In Users Stats ######
 
@@ -325,7 +333,6 @@ def route_get_athlete_stats(athleteId):
         return fetch_athlete_stats(athleteId)
     except Exception as e:
         error_message = str(e)
-        pprint(error_message)
         response = make_response(jsonify({'error': error_message}), 500)
         return response
 
@@ -357,6 +364,58 @@ def add_all_activities():
     return activities_to_return
 
 
+def update_or_insert_item(entry, activities_table):
+    item = {
+        'athleteId': str(entry['athlete']['id']),
+        'activityId': str(entry['id']),
+        'name': entry['name'],
+        'type': entry['type'],
+        'start_date': entry['start_date'],
+        'distance': Decimal(str(entry['distance'])),
+        'moving_time': entry['moving_time'],
+        'elapsed_time': entry['elapsed_time'],
+        'average_speed': Decimal(str(entry['average_speed'])),
+        'max_speed': Decimal(str(entry['max_speed'])),
+        'elev_high': Decimal(str(entry['elev_high'])) if 'elev_high' in entry else None,
+        'elev_low': Decimal(str(entry['elev_low'])) if 'elev_low' in entry else None,
+        'total_elevation_gain': Decimal(str(entry['total_elevation_gain'])),
+        'average_heartrate': Decimal(str(entry['average_heartrate'])) if 'average_heartrate' in entry else None,
+        'max_heartrate': Decimal(str(entry['max_heartrate'])) if 'max_heartrate' in entry else None,
+        'location_city': entry['location_city'],
+        'location_state': entry['location_state'],
+        'location_country': entry['location_country'],
+        'achievement_count': entry['achievement_count'],
+        'kudos_count': entry['kudos_count'],
+        'comment_count': entry['comment_count'],
+        'pr_count': entry['pr_count']
+    }
+
+    try:
+        activities_table.put_item(
+            Item=item,
+            ConditionExpression='attribute_not_exists(athleteId) AND attribute_not_exists(activityId)'
+        )
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            activities_table.update_item(
+                Key={
+                    'athleteId': str(item['athleteId']),
+                    'activityId': str(item['activityId']),
+                },
+                UpdateExpression='SET ' +
+                ', '.join([f"#{key} = :{key}" for key in item.keys()
+                          if key not in ['athleteId', 'activityId']]),
+                ExpressionAttributeNames={
+                    f"#{key}": key for key in item.keys() if key not in ['athleteId', 'activityId']
+                },
+                ExpressionAttributeValues={
+                    f":{key}": value for key, value in item.items() if key not in ['athleteId', 'activityId']
+                }
+            )
+        else:
+            print(f"Error during put_item: {e}")
+
+
 def add_all_activities_req(access_token):
     activities_to_add = fetch_all_activities_strava_req(access_token, 1)
     # Sort and Filter Activities
@@ -366,41 +425,15 @@ def add_all_activities_req(access_token):
     activities_to_add = list(filter(lambda x: x['type'] in [
                              "Walk", "Swim", "Run", "Ride"], activities_to_add))
 
-    # Upload Activities To DynamoDB
-    activities_to_add = [
-        {
-            'athleteId': str(entry['athlete']['id']),
-            'activityId': str(entry['id']),
-            'name': entry['name'],
-            'type': entry['type'],
-            'start_date': entry['start_date'],
-            'distance': Decimal(str(entry['distance'])),
-            'moving_time': entry['moving_time'],
-            'elapsed_time': entry['elapsed_time'],
-            'average_speed': Decimal(str(entry['average_speed'])),
-            'max_speed': Decimal(str(entry['max_speed'])),
-            'elev_high': Decimal(str(entry['elev_high'])) if 'elev_high' in entry else None,
-            'elev_low': Decimal(str(entry['elev_low'])) if 'elev_low' in entry else None,
-            'total_elevation_gain': Decimal(str(entry['total_elevation_gain'])),
-            'average_heartrate': Decimal(str(entry['average_heartrate'])) if 'average_heartrate' in entry else None,
-            'max_heartrate': Decimal(str(entry['max_heartrate'])) if 'max_heartrate' in entry else None,
-            'location_city': entry['location_city'],
-            'location_state': entry['location_state'],
-            'location_country': entry['location_country'],
-            'achievement_count': entry['achievement_count'],
-            'kudos_count': entry['kudos_count'],
-            'comment_count': entry['comment_count'],
-            'pr_count': entry['pr_count']
-        } for entry in activities_to_add
-    ]
-
     dynamodb = boto3.resource('dynamodb')
     activities_table = dynamodb.Table('srg-activities-table')
 
-    with activities_table.batch_writer() as batch:
-        for activity in activities_to_add:
-            batch.put_item(Item=activity)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        def update_function(entry): return update_or_insert_item(
+            entry, activities_table)
+        executor.map(update_function, activities_to_add)
 
+    print("Update or insert items completed successfully.")
     return activities_to_add
 
 ###### Destroy User ######
