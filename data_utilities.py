@@ -17,6 +17,27 @@ class RateLimitError(Exception):
     pass
 
 
+@data_controller_bp.route('/srg/activityStream/<entry_id>', methods=['GET'])
+def route_get_activity_stream(entry_id):
+    return get_activity_stream(entry_id)
+
+
+def get_activity_stream(entry_id):
+    srg_athlete_id = request.args.get('srg_athlete_id')
+    access_token = get_access_token_from_athlete_id(srg_athlete_id)
+    activity_stream = get_activity_stream_req(entry_id, access_token)
+    return activity_stream
+
+
+def get_activity_stream_req(entry_id, access_token):
+    url = f"https://www.strava.com/api/v3/activities/{entry_id}/streams?keys=latlng&key_by_type=true"
+    r = requests.get(
+        url, headers={"Authorization": f"Bearer { access_token }"}
+    )
+    r = r.json()
+    return r
+
+
 @data_controller_bp.route('/srg/getUserSettings', methods=['GET'])
 def route_get_user_settings():
     try:
@@ -201,23 +222,25 @@ def fetch_individual_entry(entry_id):
 def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
     # data section #
     activity_description = data.get('description', '')
+    best_efforts = json.dumps(data.get('best_efforts', []))
     device_name = data.get('device_name', '')
     gear_name = data.get('gear', {}).get('name', '')
-    map_polyline = data.get('map', {}).get('polyline', '')
     laps = json.dumps(data.get('laps', []))
+    map_polyline = data.get('map', {}).get('polyline', '')
     primary_photo_url = data.get('photos', {}).get('primary', {})
     if primary_photo_url is not None:
         primary_photo_url = primary_photo_url.get('urls', {}).get('600', '')
     else:
         primary_photo_url = ''
-
+    segment_efforts = json.dumps(data.get('segment_efforts', []))
     # data captured in memory#
 
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
     key = {'athleteId': srg_athlete_id, 'activityId': entry_id}
-    update_expression = 'SET #indActivityHasBeenCachedAttr = :indActivityHasBeenCachedValue, #primaryPhotoAttr = :primaryPhotoValue, #activityDescriptionAttr = :activityDescriptionValue, #deviceNameAttr = :deviceNameValue, #gearNameAttr = :gearNameValue, #mapPolylineAttr = :mapPolylineValue, #lapsAttr = :lapsValue'
+
+    update_expression = 'SET #indActivityHasBeenCachedAttr = :indActivityHasBeenCachedValue, #primaryPhotoAttr = :primaryPhotoValue, #activityDescriptionAttr = :activityDescriptionValue, #deviceNameAttr = :deviceNameValue, #gearNameAttr = :gearNameValue, #mapPolylineAttr = :mapPolylineValue, #lapsAttr = :lapsValue, #bestEffortsAttr = :bestEffortsValue, #segmentEffortsAttr = :segmentEffortsValue'
 
     expression_attribute_names = {
         '#indActivityHasBeenCachedAttr': 'individualActivityCached',
@@ -227,7 +250,10 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
         '#gearNameAttr': 'gearName',
         '#lapsAttr': 'laps',
         '#mapPolylineAttr': 'mapPolyline',
+        '#bestEffortsAttr': 'bestEfforts',
+        '#segmentEffortsAttr': 'segmentEfforts'
     }
+
     expression_attribute_values = {
         ':indActivityHasBeenCachedValue': True,
         ':primaryPhotoValue': primary_photo_url,
@@ -235,7 +261,9 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
         ':deviceNameValue': device_name,
         ':gearNameValue': gear_name,
         ':lapsValue': laps,
-        ':mapPolylineValue': map_polyline
+        ':mapPolylineValue': map_polyline,
+        ':bestEffortsValue': best_efforts,
+        ':segmentEffortsValue': segment_efforts
     }
     table.update_item(
         Key=key,
