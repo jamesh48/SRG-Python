@@ -166,6 +166,8 @@ def fetch_general_individual_entry(athlete_id, activity_id):
     response = response['Items'][0]
     new_response = {**response,
                     "id": int(response.get('activityId')),
+                    "best_efforts": json.loads(response.get('bestEfforts')),
+                    "segment_efforts": json.loads(response.get('segmentEfforts')),
                     "gear": {
                         "name": response.get('gearName')
                     },
@@ -185,8 +187,10 @@ def fetch_general_individual_entry(athlete_id, activity_id):
     keys_to_exclude = [
         'mapPolyline',
         'primaryPhotoUrl',
+        'bestEfforts',
         'deviceName',
-        'gearName'
+        'gearName',
+        'segmentEfforts'
     ]
     new_response_filtered = {
         key: value for key, value in new_response.items() if key not in keys_to_exclude}
