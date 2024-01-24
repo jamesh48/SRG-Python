@@ -402,7 +402,8 @@ def test_update_one_activity():
     update_one_activity_req(
         '123456789',
         '987654321',
-        'Activity Name has Changed!'
+        'Activity Name has Changed!',
+        'Activity Description has Changed!'
     )
     activities = table.scan()
     activities = activities['Items']
