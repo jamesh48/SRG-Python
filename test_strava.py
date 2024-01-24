@@ -411,6 +411,7 @@ def test_update_one_activity():
     assert 'location_city' in activities[0]
     assert activities[0]['location_city'] == 'Atlantis'
     assert activities[0]['name'] == 'Activity Name has Changed!'
+    assert activities[0]['description'] == 'Activity Description has Changed!'
 
 
 @mock_dynamodb
