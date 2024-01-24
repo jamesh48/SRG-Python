@@ -330,6 +330,7 @@ def route_get_logged_in_user():
     try:
         return get_logged_in_user()
     except RateLimitError as e:
+        error_message = str(e)
         response = make_response(jsonify({'error': error_message}), 429)
         return response
     except Exception as e:
@@ -349,7 +350,7 @@ def get_logged_in_user_req(access_token):
     url = "https://www.strava.com/api/v3/athlete"
     r = requests.get(
         url + '?access_token=' + access_token,
-        params={'scope': 'activity:read_all'}
+        params={'scope': 'profile:read_all'}
     )
     r_json = r.json()
     if 'errors' in r_json and any(error.get('code') == 'exceeded' for error in r_json['errors']):
@@ -530,6 +531,61 @@ def delete_item(keys):
     )
 
 
+@data_controller_bp.route("/srg/shoeAlert", methods=['PUT'])
+def route_put_shoe_activity_update():
+    return put_shoe_activity_update()
+
+
+def put_shoe_activity_update_req(access_token, entry_id, shoe_id):
+    encoded_shoe_id = quote(shoe_id)
+    url = f"https://www.strava.com/api/v3/activities/{entry_id}?gear_id={encoded_shoe_id}"
+    r = requests.put(
+        url, headers={"Authorization": f"Bearer { access_token }"}
+    )
+    r = r.json()
+    print(r)
+    return r
+
+
+def update_shoe_one_activity_req(athleteId, activityId, shoe_id, shoe_name):
+    dynamodb = boto3.resource('dynamodb')
+    table_name = 'srg-activities-table'
+    table = dynamodb.Table(table_name)
+    key = {'athleteId': athleteId, 'activityId': activityId}
+    update_expression = 'SET #shoeIdAttr = :shoeIdValue, #gearNameAttr = :gearNameValue'
+    expression_attribute_names = {
+        '#shoeIdAttr': 'shoeId',
+        '#gearNameAttr': 'gearName'
+    }
+    expression_attribute_values = {
+        ':shoeIdValue': shoe_id,
+        ':gearNameValue': shoe_name
+    }
+    table.update_item(
+        Key=key,
+        UpdateExpression=update_expression,
+        ExpressionAttributeNames=expression_attribute_names, ExpressionAttributeValues=expression_attribute_values
+    )
+    return 'ok'
+
+
+def put_shoe_activity_update():
+    # Query Parameters
+    srg_athlete_id = request.args.get('srg_athlete_id')
+    entry_id = request.args.get('entry_id')
+    shoe_id = request.args.get('shoe_id')
+    shoe_name = request.args.get('shoe_name')
+
+    # AccessToken
+    access_token = get_access_token_from_athlete_id(srg_athlete_id)
+    # Update Strava
+    put_shoe_activity_update_req(access_token, entry_id, shoe_id)
+    # Update Dynamo
+    update_shoe_one_activity_req(srg_athlete_id, entry_id, shoe_id, shoe_name)
+
+    return {'message': 'updated activity with shoe!'}
+
+
 @data_controller_bp.route("/srg/activityUpdate", methods=['PUT'])
 def route_put_activity_update():
     return put_activity_update()
@@ -547,18 +603,24 @@ def put_activity_update():
     # Update Strava
     put_activity_update_req(access_token, entry_id, name, description)
     # Update Dynamo
-    update_one_activity_req(srg_athlete_id, entry_id, name)
-    return 'updated activity!'
+    update_one_activity_req(srg_athlete_id, entry_id, name, description)
+    return {'message': 'updated activity!'}
 
 
-def update_one_activity_req(athleteId, activityId, name):
+def update_one_activity_req(athleteId, activityId, name, description):
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
     key = {'athleteId': athleteId, 'activityId': activityId}
-    update_expression = 'SET #nameAttr = :nameValue'
-    expression_attribute_names = {'#nameAttr': 'name'}
-    expression_attribute_values = {':nameValue': name}
+    update_expression = 'SET #nameAttr = :nameValue, #descriptionAttr = :descriptionValue'
+    expression_attribute_names = {
+        '#nameAttr': 'name',
+        '#descriptionAttr': 'description'
+    }
+    expression_attribute_values = {
+        ':nameValue': name,
+        ':descriptionValue': description
+    }
     table.update_item(
         Key=key,
         UpdateExpression=update_expression,
