@@ -120,11 +120,37 @@ def route_fetch_entry_kudoers(entryId):
     return fetch_entry_kudoers(entryId)
 
 
+def update_cached_kudos_comments(srg_athlete_id, entry_id, kudos, comments):
+    kudos_len = len(kudos)
+    comment_len = len(comments)
+
+    dynamodb = boto3.resource('dynamodb')
+    table_name = 'srg-activities-table'
+    table = dynamodb.Table(table_name)
+    key = {'athleteId': srg_athlete_id, 'activityId': entry_id}
+    update_expression = 'SET #kudosCountAttr = :kudosCountValue, #commentCountAttr = :commentCountValue'
+    expression_attribute_names = {
+        '#kudosCountAttr': 'kudos_count',
+        '#commentCountAttr': 'comment_count'
+    }
+    expression_attribute_values = {
+        ':kudosCountValue': kudos_len,
+        ':commentCountValue': comment_len
+    }
+    table.update_item(
+        Key=key,
+        UpdateExpression=update_expression,
+        ExpressionAttributeNames=expression_attribute_names, ExpressionAttributeValues=expression_attribute_values
+    )
+    return 'dynamo updated'
+
+
 def fetch_entry_kudoers(entry_id):
     srg_athlete_id = request.args.get('srg_athlete_id')
     access_token = get_access_token_from_athlete_id(srg_athlete_id)
     comments = fetch_entry_comments_req(entry_id, access_token)
     kudos = fetch_entry_kudoers_req(entry_id, access_token)
+    update_cached_kudos_comments(srg_athlete_id, entry_id, kudos, comments)
     return {'comments': comments, 'kudos': kudos}
 
 
