@@ -117,13 +117,20 @@ def save_user_settings_req(srg_athlete_id, default_sport, default_format, defaul
 
 @data_controller_bp.route('/srg/entryKudos/<entryId>', methods=["GET"])
 def route_fetch_entry_kudoers(entryId):
-    return fetch_entry_kudoers(entryId)
+    try:
+        return fetch_entry_kudoers(entryId)
+    except RateLimitError as e:
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 429)
+        return response
 
 
 def update_cached_kudos_comments(srg_athlete_id, entry_id, kudos, comments):
     kudos_len = len(kudos)
     comment_len = len(comments)
+    pprint(kudos)
 
+    pprint(comments)
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
@@ -159,6 +166,8 @@ def fetch_entry_kudoers_req(entry_id, access_token):
     r = requests.get(
         url, headers={"Authorization": f"Bearer { access_token }"})
     r = r.json()
+    if 'errors' in r and any(error.get('code') == 'exceeded' for error in r['errors']):
+        raise RateLimitError('Rate Limit Exceeded')
     return r
 
 
@@ -167,6 +176,9 @@ def fetch_entry_comments_req(entry_id, access_token):
     r = requests.get(
         url, headers={"Authorization": f"Bearer { access_token }"})
     r = r.json()
+
+    if 'errors' in r and any(error.get('code') == 'exceeded' for error in r['errors']):
+        raise RateLimitError('Rate Limit Exceeded')
     return r
 
 
