@@ -354,6 +354,10 @@ def get_logged_in_user_req(access_token):
     )
     r_json = r.json()
     if 'errors' in r_json and any(error.get('code') == 'exceeded' for error in r_json['errors']):
+        print('X-RateLimit-Limit')
+        pprint(r.headers.get('X-RateLimit-Limit'))
+        print('X-RateLimit-Usage')
+        pprint(r.headers.get('X-RateLimit-Usage'))
         raise RateLimitError('Rate Limit Exceeded')
     return r_json
 
