@@ -128,9 +128,6 @@ def route_fetch_entry_kudoers(entryId):
 def update_cached_kudos_comments(srg_athlete_id, entry_id, kudos, comments):
     kudos_len = len(kudos)
     comment_len = len(comments)
-    pprint(kudos)
-
-    pprint(comments)
     dynamodb = boto3.resource('dynamodb')
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
@@ -334,7 +331,8 @@ def fetch_all_activities_strava_req(access_token, page):
         params={'page': page, 'per_page': 200}
     )
     r = r.json()
-
+    if 'errors' in r and any(error.get('code') == 'exceeded' for error in r['errors']):
+        raise RateLimitError('Rate Limit Exceeded')
     if len(r) == 200:
         return r + fetch_all_activities_strava_req(access_token, page + 1)
     return r
@@ -406,6 +404,10 @@ def get_logged_in_user_req(access_token):
 def route_get_athlete_stats(athleteId):
     try:
         return fetch_athlete_stats(athleteId)
+    except RateLimitError as e:
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 429)
+        return response
     except Exception as e:
         error_message = str(e)
         response = make_response(jsonify({'error': error_message}), 500)
@@ -429,7 +431,16 @@ def fetch_athlete_stats_req(athleteId, access_token):
 
 @data_controller_bp.route('/srg/addAllActivities', methods=["POST"])
 def route_add_all_activities():
-    return add_all_activities()
+    try:
+        return add_all_activities()
+    except RateLimitError as e:
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 429)
+        return response
+    except Exception as e:
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 500)
+        return response
 
 
 def add_all_activities():
@@ -575,7 +586,12 @@ def delete_item(keys):
 
 @data_controller_bp.route("/srg/shoeAlert", methods=['PUT'])
 def route_put_shoe_activity_update():
-    return put_shoe_activity_update()
+    try:
+        return put_shoe_activity_update()
+    except RateLimitError as e:
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 429)
+        return response
 
 
 def put_shoe_activity_update_req(access_token, entry_id, shoe_id):
@@ -585,7 +601,8 @@ def put_shoe_activity_update_req(access_token, entry_id, shoe_id):
         url, headers={"Authorization": f"Bearer { access_token }"}
     )
     r = r.json()
-    print(r)
+    if 'errors' in r and any(error.get('code') == 'exceeded' for error in r['errors']):
+        raise RateLimitError('Rate Limit Exceeded')
     return r
 
 
