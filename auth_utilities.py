@@ -7,6 +7,7 @@ import boto3
 from pprint import pprint
 from botocore.exceptions import ClientError
 from flask import Blueprint
+from aws_config import get_dynamodb_resource
 
 
 auth_controller_bp = Blueprint('auth_controller', __name__)
@@ -62,7 +63,7 @@ def exchange_token():
 
 def upsert_tokens(tokens):
     try:
-        dynamodb = boto3.resource('dynamodb')
+        dynamodb = get_dynamodb_resource()
         tokens_table = dynamodb.Table('srg-token-table')
         key = {'athleteId': tokens['athlete_id']}
 
@@ -110,7 +111,7 @@ def refresh_tokens(athlete_id, refresh_token):
 
 
 def fetch_tokens(athlete_id):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     tokens_table = dynamodb.Table('srg-token-table')
     response = tokens_table.get_item(
         Key={

@@ -5,7 +5,7 @@ from pprint import pprint
 from auth_utilities import fetch_tokens, upsert_tokens, refresh_tokens
 from moto import mock_dynamodb
 from unittest import mock
-from data_utilities import fetch_all_activities_strava_req,                fetch_all_activities_req, fetch_individual_entry_req, upload_individual_entry_data_to_db, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req, save_user_settings_req, get_user_settings_req, fetch_general_individual_entry
+from data_utilities import fetch_all_activities_strava_req, fetch_all_activities_req, fetch_individual_entry_req, upload_individual_entry_data_to_db, destroy_user_req, update_one_activity_req, put_activity_update_req, fetch_entry_kudoers_req, destroy_user_tokens_req, save_user_settings_req, get_user_settings_req, fetch_general_individual_entry
 
 
 def create_token_table():

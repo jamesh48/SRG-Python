@@ -9,6 +9,7 @@ from urllib.parse import quote
 from boto3.dynamodb.types import TypeSerializer
 from botocore.exceptions import ClientError
 from concurrent.futures import ThreadPoolExecutor
+from aws_config import get_dynamodb_resource
 
 data_controller_bp = Blueprint('data_controller', __name__)
 
@@ -54,7 +55,7 @@ def get_user_settings():
 
 
 def get_user_settings_req(athlete_id):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     tokens_table = dynamodb.Table('srg-token-table')
     response = tokens_table.get_item(
         Key={
@@ -91,7 +92,7 @@ def save_user_settings():
 
 
 def save_user_settings_req(srg_athlete_id, default_sport, default_format, default_date, dark_mode):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     key = {'athleteId': srg_athlete_id}
     update_expression = 'SET #defaultSportAttr = :defaultSportValue, #defaultFormatAttr = :defaultFormatValue, #defaultDateAttr = :defaultDateValue, #darkModeAttr = :darkModeValue'
     expression_attribute_names = {
@@ -128,7 +129,7 @@ def route_fetch_entry_kudoers(entryId):
 def update_cached_kudos_comments(srg_athlete_id, entry_id, kudos, comments):
     kudos_len = len(kudos)
     comment_len = len(comments)
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
     key = {'athleteId': srg_athlete_id, 'activityId': entry_id}
@@ -185,7 +186,7 @@ def route_fetch_general_individual_entry(athlete_id, activity_id):
 
 
 def fetch_general_individual_entry(athlete_id, activity_id):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     activities_table = dynamodb.Table('srg-activities-table')
     response = activities_table.query(
         KeyConditionExpression="#athlete_id = :athlete_id AND #activity_id = :activity_id",
@@ -274,7 +275,7 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
     segment_efforts = json.dumps(data.get('segment_efforts', []))
     # data captured in memory#
 
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
     key = {'athleteId': srg_athlete_id, 'activityId': entry_id}
@@ -314,9 +315,9 @@ def upload_individual_entry_data_to_db(data, srg_athlete_id, entry_id):
 
 ####### All Activities #######
 @data_controller_bp.route('/srg/allActivities', methods=["GET"])
-def route_fetch_all_activities():
+def route_fetch_activities():
     try:
-        return fetch_all_activities()
+        return fetch_activities()
     except Exception as e:
         print(
             "Exception when calling ActivitiesApi -> getLoggedInAthleteActivities: %s\n" % e)
@@ -338,25 +339,74 @@ def fetch_all_activities_strava_req(access_token, page):
     return r
 
 
-def fetch_all_activities_req(srg_athlete_id):
-    dynamodb = boto3.resource('dynamodb')
+def fetch_activities_req(srg_athlete_id, activity_type, limit=50, last_key=None):
+    """
+    Fetch activities with pagination support.
+
+    Args:
+        srg_athlete_id: The athlete ID to query
+        limit: Maximum number of items to return (default: 50)
+        last_key: The LastEvaluatedKey from previous query for pagination
+
+    Returns:
+        Dictionary with 'items' and optional 'lastKey' for pagination
+    """
+    dynamodb = get_dynamodb_resource()
     activities_table = dynamodb.Table('srg-activities-table')
-    response = activities_table.query(
-        KeyConditionExpression="#athlete_id = :athlete_id",
-        ExpressionAttributeNames={
+
+    # Build query parameters
+    query_params = {
+        'IndexName': 'athleteId-type-index',
+        'KeyConditionExpression': "#athlete_id = :athlete_id and #type = :type",
+        'ExpressionAttributeNames': {
             "#athlete_id": "athleteId",
+            "#type": "type"
         },
-        ExpressionAttributeValues={
+        'ExpressionAttributeValues': {
             ":athlete_id": srg_athlete_id,
-        }
-    )
-    return response['Items']
+            ":type": activity_type
+        },
+        'Limit': limit
+    }
+
+    # Add pagination key if provided
+    if last_key:
+        query_params['ExclusiveStartKey'] = last_key
+
+    # Execute query
+    response = activities_table.query(**query_params)
+
+    # Build response with pagination info
+    result = {
+        'items': response['Items'],
+        'count': len(response['Items'])
+    }
+
+    # Include LastEvaluatedKey if there are more items
+    if 'LastEvaluatedKey' in response:
+        result['lastKey'] = response['LastEvaluatedKey']
+
+    return result
 
 
-def fetch_all_activities():
+def fetch_activities():
     srg_athlete_id = request.args.get('srg_athlete_id')
-    r = fetch_all_activities_req(srg_athlete_id)
-    return r
+    activity_type = request.args.get('activity_type')
+    print('xxxxx')
+    print(activity_type)
+    limit = request.args.get('limit', 50, type=int)
+    last_key_json = request.args.get('lastKey')
+
+    # Parse lastKey from JSON string if provided
+    last_key = None
+    if last_key_json:
+        try:
+            last_key = json.loads(last_key_json)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'Invalid lastKey format'}), 400
+
+    r = fetch_activities_req(srg_athlete_id, activity_type=activity_type, limit=limit, last_key=last_key)
+    return jsonify(r)
 
 ###### Get Logged In User ######
 
@@ -511,7 +561,7 @@ def add_all_activities_req(access_token):
     activities_to_add = list(filter(lambda x: x['type'] in [
                              "Walk", "Swim", "Run", "Ride"], activities_to_add))
 
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     activities_table = dynamodb.Table('srg-activities-table')
 
     with ThreadPoolExecutor(max_workers=10) as executor:
@@ -541,7 +591,7 @@ def destroy_user():
 
 
 def destroy_user_tokens_req(srg_athlete_id):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     table_name = 'srg-token-table'
     table = dynamodb.Table(table_name)
     table.delete_item(
@@ -553,7 +603,7 @@ def destroy_user_tokens_req(srg_athlete_id):
 
 
 def destroy_user_req(srg_athlete_id):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
 
@@ -572,7 +622,7 @@ def destroy_user_req(srg_athlete_id):
 
 
 def delete_item(keys):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
 
@@ -607,7 +657,7 @@ def put_shoe_activity_update_req(access_token, entry_id, shoe_id):
 
 
 def update_shoe_one_activity_req(athleteId, activityId, shoe_id, shoe_name):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
     key = {'athleteId': athleteId, 'activityId': activityId}
@@ -667,7 +717,7 @@ def put_activity_update():
 
 
 def update_one_activity_req(athleteId, activityId, name, description):
-    dynamodb = boto3.resource('dynamodb')
+    dynamodb = get_dynamodb_resource()
     table_name = 'srg-activities-table'
     table = dynamodb.Table(table_name)
     key = {'athleteId': athleteId, 'activityId': activityId}
