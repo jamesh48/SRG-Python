@@ -392,8 +392,7 @@ def fetch_activities_req(srg_athlete_id, activity_type, limit=50, last_key=None)
 def fetch_activities():
     srg_athlete_id = request.args.get('srg_athlete_id')
     activity_type = request.args.get('activity_type')
-    print('xxxxx')
-    print(activity_type)
+
     limit = request.args.get('limit', 50, type=int)
     last_key_json = request.args.get('lastKey')
 
@@ -407,6 +406,102 @@ def fetch_activities():
 
     r = fetch_activities_req(srg_athlete_id, activity_type=activity_type, limit=limit, last_key=last_key)
     return jsonify(r)
+
+
+###### Monthly Stats ######
+@data_controller_bp.route('/srg/monthlyStats', methods=["GET"])
+def route_fetch_monthly_stats():
+    try:
+        return fetch_monthly_stats()
+    except Exception as e:
+        print("Exception when fetching monthly stats: %s\n" % e)
+        error_message = str(e)
+        response = make_response(jsonify({'error': error_message}), 500)
+        return response
+
+
+def fetch_monthly_stats():
+    """
+    Fetch aggregated monthly statistics for activities.
+    Returns count and total distance grouped by month.
+    """
+    srg_athlete_id = request.args.get('srg_athlete_id')
+    activity_type = request.args.get('activity_type', 'Run')
+
+    stats = fetch_monthly_stats_req(srg_athlete_id, activity_type)
+    return jsonify(stats)
+
+
+def fetch_monthly_stats_req(srg_athlete_id, activity_type):
+    """
+    Query DynamoDB for all activities and aggregate by month.
+
+    Args:
+        srg_athlete_id: The athlete ID to query
+        activity_type: The type of activity (Run, Ride, Walk, Swim)
+
+    Returns:
+        Dictionary with monthly aggregates:
+        {
+            "2024-11": {"count": 15, "distance": 50000},
+            "2024-10": {"count": 20, "distance": 75000},
+            ...
+        }
+    """
+    from collections import defaultdict
+
+    dynamodb = get_dynamodb_resource()
+    activities_table = dynamodb.Table('srg-activities-table')
+
+    # Build query parameters
+    query_params = {
+        'IndexName': 'athleteId-type-index',
+        'KeyConditionExpression': "#athlete_id = :athlete_id and #type = :type",
+        'ExpressionAttributeNames': {
+            "#athlete_id": "athleteId",
+            "#type": "type"
+        },
+        'ExpressionAttributeValues': {
+            ":athlete_id": srg_athlete_id,
+            ":type": activity_type
+        }
+    }
+
+    # Dictionary to store monthly aggregates
+    monthly_stats = defaultdict(lambda: {"count": 0, "distance": 0})
+
+    # Paginate through all results
+    while True:
+        response = activities_table.query(**query_params)
+
+        # Aggregate activities by month
+        for activity in response['Items']:
+            # Parse the start_date (format: "2024-11-15T10:30:00Z")
+            start_date = activity.get('start_date', '')
+            if start_date:
+                # Extract year-month (e.g., "2024-11")
+                month_key = start_date[:7]
+
+                # Increment count
+                monthly_stats[month_key]["count"] += 1
+
+                # Add distance (convert Decimal to float)
+                distance = activity.get('distance', 0)
+                if distance:
+                    monthly_stats[month_key]["distance"] += float(distance)
+
+        # Check if there are more pages
+        if 'LastEvaluatedKey' not in response:
+            break
+
+        # Add pagination key for next query
+        query_params['ExclusiveStartKey'] = response['LastEvaluatedKey']
+
+    # Convert defaultdict to regular dict and sort by month
+    result = dict(sorted(monthly_stats.items(), reverse=True))
+
+    return result
+
 
 ###### Get Logged In User ######
 
