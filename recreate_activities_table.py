@@ -36,7 +36,8 @@ def recreate_activities_table():
             AttributeDefinitions=[
                 {'AttributeName': 'athleteId', 'AttributeType': 'S'},
                 {'AttributeName': 'activityId', 'AttributeType': 'S'},
-                {'AttributeName': 'type', 'AttributeType': 'S'}
+                {'AttributeName': 'type', 'AttributeType': 'S'},
+                {'AttributeName': 'start_date', 'AttributeType': 'S'}
             ],
             GlobalSecondaryIndexes=[
                 {
@@ -48,11 +49,21 @@ def recreate_activities_table():
                     'Projection': {
                         'ProjectionType': 'ALL'
                     }
+                },
+                {
+                    'IndexName': 'athleteId-startDate-index',
+                    'KeySchema': [
+                        {'AttributeName': 'athleteId', 'KeyType': 'HASH'},
+                        {'AttributeName': 'start_date', 'KeyType': 'RANGE'}
+                    ],
+                    'Projection': {
+                        'ProjectionType': 'ALL'
+                    }
                 }
             ],
             BillingMode='PAY_PER_REQUEST'
         )
-        print("✓ Created srg-activities-table with athleteId-type-index GSI")
+        print("✓ Created srg-activities-table with GSIs: athleteId-type-index, athleteId-startDate-index")
     except Exception as e:
         print(f"✗ Error creating table: {e}")
         return

@@ -339,14 +339,17 @@ def fetch_all_activities_strava_req(access_token, page):
     return r
 
 
-def fetch_activities_req(srg_athlete_id, activity_type, limit=50, last_key=None):
+def fetch_activities_req(srg_athlete_id, activity_type, limit=50, before_date=None, after_date=None, last_key=None):
     """
-    Fetch activities with pagination support.
+    Fetch activities with pagination and date filtering support.
 
     Args:
         srg_athlete_id: The athlete ID to query
+        activity_type: The type of activity to filter by
         limit: Maximum number of items to return (default: 50)
         last_key: The LastEvaluatedKey from previous query for pagination
+        before_date: Filter activities before this date (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)
+        after_date: Filter activities after this date (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)
 
     Returns:
         Dictionary with 'items' and optional 'lastKey' for pagination
@@ -354,20 +357,55 @@ def fetch_activities_req(srg_athlete_id, activity_type, limit=50, last_key=None)
     dynamodb = get_dynamodb_resource()
     activities_table = dynamodb.Table('srg-activities-table')
 
-    # Build query parameters
-    query_params = {
-        'IndexName': 'athleteId-type-index',
-        'KeyConditionExpression': "#athlete_id = :athlete_id and #type = :type",
-        'ExpressionAttributeNames': {
-            "#athlete_id": "athleteId",
-            "#type": "type"
-        },
-        'ExpressionAttributeValues': {
-            ":athlete_id": srg_athlete_id,
-            ":type": activity_type
-        },
-        'Limit': limit
-    }
+    use_date_filter = before_date or after_date
+
+    # Use athleteId-startDate-index when date filtering is active
+    if use_date_filter:
+        query_params = {
+            'IndexName': 'athleteId-startDate-index',
+            'ExpressionAttributeNames': {
+                "#athlete_id": "athleteId",
+                "#start_date": "start_date",
+                "#type": "type"
+            },
+            'ExpressionAttributeValues': {
+                ":athlete_id": srg_athlete_id,
+                ":type": activity_type
+            },
+            'FilterExpression': "#type = :type",  # Filter by type since it's not in this index
+            'Limit': limit
+        }
+
+        # Build KeyConditionExpression based on date filters
+        if before_date and after_date:
+            # Both dates provided - use BETWEEN
+            query_params['KeyConditionExpression'] = "#athlete_id = :athlete_id AND #start_date BETWEEN :after_date AND :before_date"
+            query_params['ExpressionAttributeValues'][':after_date'] = after_date
+            query_params['ExpressionAttributeValues'][':before_date'] = before_date
+        elif after_date:
+            # Only after_date provided
+            query_params['KeyConditionExpression'] = "#athlete_id = :athlete_id AND #start_date >= :after_date"
+            query_params['ExpressionAttributeValues'][':after_date'] = after_date
+        elif before_date:
+            # Only before_date provided
+            query_params['KeyConditionExpression'] = "#athlete_id = :athlete_id AND #start_date <= :before_date"
+            query_params['ExpressionAttributeValues'][':before_date'] = before_date
+
+    else:
+        # No date filter - use the existing athleteId-type-index
+        query_params = {
+            'IndexName': 'athleteId-type-index',
+            'KeyConditionExpression': "#athlete_id = :athlete_id AND #type = :type",
+            'ExpressionAttributeNames': {
+                "#athlete_id": "athleteId",
+                "#type": "type"
+            },
+            'ExpressionAttributeValues': {
+                ":athlete_id": srg_athlete_id,
+                ":type": activity_type
+            },
+            'Limit': limit
+        }
 
     # Add pagination key if provided
     if last_key:
@@ -392,6 +430,8 @@ def fetch_activities_req(srg_athlete_id, activity_type, limit=50, last_key=None)
 def fetch_activities():
     srg_athlete_id = request.args.get('srg_athlete_id')
     activity_type = request.args.get('activity_type')
+    before_date = request.args.get('before_date')
+    after_date = request.args.get('after_date')
 
     limit = request.args.get('limit', 50, type=int)
     last_key_json = request.args.get('lastKey')
@@ -404,7 +444,7 @@ def fetch_activities():
         except json.JSONDecodeError:
             return jsonify({'error': 'Invalid lastKey format'}), 400
 
-    r = fetch_activities_req(srg_athlete_id, activity_type=activity_type, limit=limit, last_key=last_key)
+    r = fetch_activities_req(srg_athlete_id, activity_type=activity_type, limit=limit, last_key=last_key, before_date=before_date, after_date=after_date)
     return jsonify(r)
 
 

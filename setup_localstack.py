@@ -43,7 +43,8 @@ def create_tables():
             AttributeDefinitions=[
                 {'AttributeName': 'athleteId', 'AttributeType': 'S'},
                 {'AttributeName': 'activityId', 'AttributeType': 'S'},
-                {'AttributeName': 'type', 'AttributeType': 'S'}
+                {'AttributeName': 'type', 'AttributeType': 'S'},
+                {'AttributeName': 'start_date', 'AttributeType': 'S'}
             ],
             GlobalSecondaryIndexes=[
                 {
@@ -51,6 +52,16 @@ def create_tables():
                     'KeySchema': [
                         {'AttributeName': 'athleteId', 'KeyType': 'HASH'},
                         {'AttributeName': 'type', 'KeyType': 'RANGE'}
+                    ],
+                    'Projection': {
+                        'ProjectionType': 'ALL'
+                    }
+                },
+                {
+                    'IndexName': 'athleteId-startDate-index',
+                    'KeySchema': [
+                        {'AttributeName': 'athleteId', 'KeyType': 'HASH'},
+                        {'AttributeName': 'start_date', 'KeyType': 'RANGE'}
                     ],
                     'Projection': {
                         'ProjectionType': 'ALL'
