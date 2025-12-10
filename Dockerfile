@@ -1,13 +1,20 @@
-FROM python:3.8-slim-buster
+FROM python:3.11-slim-bookworm
 
 WORKDIR /python-docker
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
 COPY . .
 
-ENV LISTEN_PORT=5000
-EXPOSE 5000
+ENV LISTEN_PORT=4000
+EXPOSE 4000
 
-CMD ["python3", "strava.py"]
+# Copy and set executable permissions for entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

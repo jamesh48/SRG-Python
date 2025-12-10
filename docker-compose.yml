@@ -1,0 +1,44 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: srg-localstack
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    environment:
+      - SERVICES=dynamodb,s3
+      - DEBUG=0
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "./testing_fixtures:/etc/localstack/init/ready.d"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - srg-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: srg-app
+    ports:
+      - "4000:4000"
+    environment:
+      - strava_client_id=${strava_client_id}
+      - strava_client_secret=${strava_client_secret}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - LOCALSTACK_ENDPOINT=http://localstack:4566
+      - USE_LOCALSTACK=${USE_LOCALSTACK}
+      - FLASK_ENVIRONMENT=development
+    depends_on:
+      - localstack
+    networks:
+      - srg-network
+    volumes:
+      - .:/python-docker
+
+networks:
+  srg-network:
+    driver: bridge

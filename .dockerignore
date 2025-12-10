@@ -1,1 +1,17 @@
 iac
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+.git
+.github
+.env.local
+.DS_Store
+*.log
