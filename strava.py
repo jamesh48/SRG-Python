@@ -23,8 +23,10 @@ def return_healthy():
 
 if __name__ == '__main__':
     env = os.environ.get('FLASK_ENVIRONMENT')
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
+
     if env == 'production':
         from waitress import serve
         serve(app, host="0.0.0.0", port=4000)
     else:
-        app.run(host="0.0.0.0", port=4000)
+        app.run(host="0.0.0.0", port=4000, debug=debug_mode, use_reloader=debug_mode)

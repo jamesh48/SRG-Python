@@ -339,7 +339,54 @@ def fetch_all_activities_strava_req(access_token, page):
     return r
 
 
-def fetch_activities_req(srg_athlete_id, activity_type, limit=50, before_date=None, after_date=None, last_key=None):
+def sort_activities(items, sort_condition):
+    """
+    Sort activities based on the provided sort condition.
+
+    Args:
+        items: List of activity items to sort
+        sort_condition: Sort condition string (e.g., 'speedDesc', 'distanceAsc')
+
+    Returns:
+        Sorted list of items
+    """
+    def safe_float(value, default=0.0):
+        """Safely convert Decimal or other types to float"""
+        try:
+            return float(value) if value is not None else default
+        except (ValueError, TypeError):
+            return default
+
+    # Define sort key functions for different conditions
+    sort_functions = {
+        'speedDesc': lambda x: -(safe_float(x.get('distance', 0)) / safe_float(x.get('moving_time', 1))),
+        'speedAsc': lambda x: safe_float(x.get('distance', 0)) / safe_float(x.get('moving_time', 1)),
+        'distanceDesc': lambda x: -safe_float(x.get('distance', 0)),
+        'distanceAsc': lambda x: safe_float(x.get('distance', 0)),
+        'dateDesc': lambda x: x.get('start_date', ''),
+        'dateAsc': lambda x: x.get('start_date', ''),
+        'elevationDesc': lambda x: -safe_float(x.get('total_elevation_gain', 0)),
+        'elevationAsc': lambda x: safe_float(x.get('total_elevation_gain', 0)),
+        'durationDesc': lambda x: -safe_float(x.get('moving_time', 0)),
+        'durationAsc': lambda x: safe_float(x.get('moving_time', 0)),
+        'achievementDesc': lambda x: -safe_float(x.get('achievement_count', 0)),
+        'achievementAsc': lambda x: safe_float(x.get('achievement_count', 0)),
+    }
+
+    # Get the sort function for the condition, default to no sorting
+    sort_key = sort_functions.get(sort_condition)
+
+    if sort_key:
+        # For dateDesc, reverse the sort since we want newest first
+        if sort_condition == 'dateDesc':
+            return sorted(items, key=sort_key, reverse=True)
+        else:
+            return sorted(items, key=sort_key)
+
+    return items
+
+
+def fetch_activities_req(srg_athlete_id, activity_type, limit=50, before_date=None, after_date=None, last_key=None, has_achievements=False, search=None, sort_condition=None):
     """
     Fetch activities with pagination and date filtering support.
 
@@ -350,6 +397,9 @@ def fetch_activities_req(srg_athlete_id, activity_type, limit=50, before_date=No
         last_key: The LastEvaluatedKey from previous query for pagination
         before_date: Filter activities before this date (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)
         after_date: Filter activities after this date (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ)
+        has_achievements: Filter activities with achievement_count > 0 (default: False)
+        search: Search term to filter by activity name (case-insensitive contains)
+        sort_condition: Sort condition (e.g., 'speedDesc', 'distanceAsc', 'dateDesc')
 
     Returns:
         Dictionary with 'items' and optional 'lastKey' for pagination
@@ -357,10 +407,100 @@ def fetch_activities_req(srg_athlete_id, activity_type, limit=50, before_date=No
     dynamodb = get_dynamodb_resource()
     activities_table = dynamodb.Table('srg-activities-table')
 
-    use_date_filter = before_date or after_date
+    has_date_filter = before_date or after_date
 
-    # Use athleteId-startDate-index when date filtering is active
-    if use_date_filter:
+    # Map sort conditions to their composite GSI info: (attribute_name, index_name)
+    # Composite indexes combine type + achievements + sortable_value in one key
+    # Date sorts are handled separately using the date index
+    sort_index_map = {
+        'speedDesc': ('type_ach_speed_desc', 'athleteId-typeAchSpeedDesc-index'),
+        'speedAsc': ('type_ach_speed_asc', 'athleteId-typeAchSpeedAsc-index'),
+        'distanceDesc': ('type_ach_distance_desc', 'athleteId-typeAchDistanceDesc-index'),
+        'distanceAsc': ('type_ach_distance_asc', 'athleteId-typeAchDistanceAsc-index'),
+        'durationDesc': ('type_ach_duration_desc', 'athleteId-typeAchDurationDesc-index'),
+        'durationAsc': ('type_ach_duration_asc', 'athleteId-typeAchDurationAsc-index'),
+        'elevationDesc': ('type_ach_elevation_desc', 'athleteId-typeAchElevationDesc-index'),
+        'elevationAsc': ('type_ach_elevation_asc', 'athleteId-typeAchElevationAsc-index'),
+        'achievementDesc': ('type_ach_achievement_desc', 'athleteId-typeAchAchievementDesc-index'),
+        'achievementAsc': ('type_ach_achievement_asc', 'athleteId-typeAchAchievementAsc-index'),
+    }
+
+    # Query Strategy Selection (priority order):
+    # 1. Sort by composite indexed field (no date filter) → use composite sort GSI with begins_with
+    # 2. Date filter → use date index, filter type/achievements/search, client-side sort if needed
+    # 3. Date sort → use date index for native sorting
+    # 4. Achievements filter → use typeAchievements index, filter search, client-side sort if needed
+    # 5. Default → use type index, client-side sort if needed
+
+    # Check if we have a non-date sort condition with composite index
+    # Composite indexes require activity_type and don't work well with date filters
+    use_composite_sort = (
+        sort_condition and
+        sort_condition in sort_index_map and
+        not has_date_filter and
+        activity_type
+    )
+
+    if use_composite_sort:
+        # STRATEGY 1: Sort by composite indexed field (native DynamoDB sorting)
+        # Composite key format: "type#achievements#sortable_value"
+        composite_attr, index_name = sort_index_map[sort_condition]
+
+        # Build composite key prefix based on filters
+        # Format: "Run#true#" if has_achievements=true, or "Run#" if has_achievements=false (show all)
+        if has_achievements:
+            composite_prefix = f"{activity_type}#true#"
+        else:
+            composite_prefix = f"{activity_type}#"  # Match both true and false
+
+        print(f"[DEBUG] Using composite sort strategy: index={index_name}, prefix={composite_prefix}, attr={composite_attr}")
+
+        query_params = {
+            'IndexName': index_name,
+            'KeyConditionExpression': "#athlete_id = :athlete_id AND begins_with(#composite_key, :composite_prefix)",
+            'ExpressionAttributeNames': {
+                "#athlete_id": "athleteId",
+                "#composite_key": composite_attr
+            },
+            'ExpressionAttributeValues': {
+                ":athlete_id": srg_athlete_id,
+                ":composite_prefix": composite_prefix
+            },
+            'ScanIndexForward': True,  # Composite keys are pre-sorted (desc uses inverted values)
+            'Limit': limit
+        }
+        # No FilterExpression needed! Type and achievements are in the composite key
+
+    elif sort_condition in ['dateDesc', 'dateAsc']:
+        # STRATEGY 2: Date sorting using date index
+        scan_forward = sort_condition == 'dateAsc'
+
+        query_params = {
+            'IndexName': 'athleteId-startDate-index',
+            'KeyConditionExpression': "#athlete_id = :athlete_id",
+            'ExpressionAttributeNames': {
+                "#athlete_id": "athleteId",
+                "#type": "type"
+            },
+            'ExpressionAttributeValues': {
+                ":athlete_id": srg_athlete_id,
+                ":type": activity_type
+            },
+            'FilterExpression': "#type = :type",
+            'ScanIndexForward': scan_forward,
+            'Limit': limit
+        }
+
+        # Add achievements filter only if requested
+        if has_achievements:
+            query_params['ExpressionAttributeNames']['#type_achievements'] = 'type_achievements'
+            query_params['ExpressionAttributeValues'][':type_achievements'] = f"{activity_type}#true"
+            query_params['FilterExpression'] += " AND #type_achievements = :type_achievements"
+
+    elif has_date_filter:
+        # STRATEGY 3: Date-based queries
+        # Use athleteId-startDate-index with date in KeyCondition
+        # Apply type and achievements as FilterExpressions (less efficient but necessary)
         query_params = {
             'IndexName': 'athleteId-startDate-index',
             'ExpressionAttributeNames': {
@@ -372,27 +512,52 @@ def fetch_activities_req(srg_athlete_id, activity_type, limit=50, before_date=No
                 ":athlete_id": srg_athlete_id,
                 ":type": activity_type
             },
-            'FilterExpression': "#type = :type",  # Filter by type since it's not in this index
+            'FilterExpression': "#type = :type",
             'Limit': limit
         }
 
-        # Build KeyConditionExpression based on date filters
+        # Build date range KeyConditionExpression
         if before_date and after_date:
-            # Both dates provided - use BETWEEN
             query_params['KeyConditionExpression'] = "#athlete_id = :athlete_id AND #start_date BETWEEN :after_date AND :before_date"
             query_params['ExpressionAttributeValues'][':after_date'] = after_date
             query_params['ExpressionAttributeValues'][':before_date'] = before_date
         elif after_date:
-            # Only after_date provided
             query_params['KeyConditionExpression'] = "#athlete_id = :athlete_id AND #start_date >= :after_date"
             query_params['ExpressionAttributeValues'][':after_date'] = after_date
         elif before_date:
-            # Only before_date provided
             query_params['KeyConditionExpression'] = "#athlete_id = :athlete_id AND #start_date <= :before_date"
             query_params['ExpressionAttributeValues'][':before_date'] = before_date
 
+        # Add achievements filter only if requested
+        if has_achievements:
+            query_params['ExpressionAttributeNames']['#type_achievements'] = 'type_achievements'
+            query_params['ExpressionAttributeValues'][':type_achievements'] = f"{activity_type}#true"
+            query_params['FilterExpression'] += " AND #type_achievements = :type_achievements"
+
+    elif has_achievements:
+        # STRATEGY 2: Achievement queries (no date filter)
+        # Use athleteId-typeAchievements-index for maximum efficiency
+        # Both type AND achievements are in the index key - no FilterExpression needed!
+        type_achievements_value = f"{activity_type}#true"
+
+        query_params = {
+            'IndexName': 'athleteId-typeAchievements-index',
+            'KeyConditionExpression': "#athlete_id = :athlete_id AND #type_achievements = :type_achievements",
+            'ExpressionAttributeNames': {
+                "#athlete_id": "athleteId",
+                "#type_achievements": "type_achievements"
+            },
+            'ExpressionAttributeValues': {
+                ":athlete_id": srg_athlete_id,
+                ":type_achievements": type_achievements_value
+            },
+            'Limit': limit
+        }
+
     else:
-        # No date filter - use the existing athleteId-type-index
+        # STRATEGY 3: Default type-based queries (no date, no achievements)
+        # Use athleteId-type-index for simple, efficient type filtering
+        print(f"[DEBUG] Using default type-based strategy")
         query_params = {
             'IndexName': 'athleteId-type-index',
             'KeyConditionExpression': "#athlete_id = :athlete_id AND #type = :type",
@@ -407,22 +572,107 @@ def fetch_activities_req(srg_athlete_id, activity_type, limit=50, before_date=No
             'Limit': limit
         }
 
-    # Add pagination key if provided
-    if last_key:
+    print(f"[DEBUG] Query params: {query_params}")
+
+    # Add pagination key if provided (but not for search - search uses cursor-based pagination)
+    if last_key and not search:
         query_params['ExclusiveStartKey'] = last_key
 
-    # Execute query
-    response = activities_table.query(**query_params)
+    # Add search filter if provided
+    if search:
+        # Use normalized_name (lowercase) for case-insensitive search
+        search_lower = search.lower()
+        query_params['ExpressionAttributeNames']['#normalized_name'] = 'normalized_name'
+        query_params['ExpressionAttributeValues'][':search'] = search_lower
 
-    # Build response with pagination info
-    result = {
-        'items': response['Items'],
-        'count': len(response['Items'])
-    }
+        # Append to existing FilterExpression or create new one
+        if 'FilterExpression' in query_params:
+            query_params['FilterExpression'] += " AND contains(#normalized_name, :search)"
+        else:
+            query_params['FilterExpression'] = "contains(#normalized_name, :search)"
 
-    # Include LastEvaluatedKey if there are more items
-    if 'LastEvaluatedKey' in response:
-        result['lastKey'] = response['LastEvaluatedKey']
+    # Execute query with multi-page scanning for search
+    # Search requires scanning multiple pages because FilterExpression
+    # is applied AFTER reading items from the index
+    if search:
+        all_items = []
+        max_pages = 20  # Safety limit: scan up to 20 pages
+        pages_scanned = 0
+        skip_mode = last_key is not None  # If we have a cursor, we're in skip mode
+        found_cursor = False
+
+        while len(all_items) < limit and pages_scanned < max_pages:
+            response = activities_table.query(**query_params)
+            page_items = response['Items']
+            pages_scanned += 1
+
+            # If in skip mode (continuing from previous pagination), skip items until we find the cursor
+            if skip_mode and not found_cursor:
+                for i, item in enumerate(page_items):
+                    # Check if this is the last item from the previous page
+                    if (item['athleteId'] == last_key.get('athleteId') and
+                        item['activityId'] == last_key.get('activityId')):
+                        # Found the cursor! Start collecting from the next item
+                        found_cursor = True
+                        page_items = page_items[i + 1:]  # Skip everything up to and including cursor
+                        break
+
+                # If we didn't find the cursor on this page, skip all items and continue
+                if not found_cursor:
+                    if 'LastEvaluatedKey' not in response:
+                        # No more pages and cursor not found - likely data changed
+                        break
+                    query_params['ExclusiveStartKey'] = response['LastEvaluatedKey']
+                    continue
+
+            # Collect items
+            all_items.extend(page_items)
+
+            # If we have enough items or no more pages, break
+            if len(all_items) >= limit or 'LastEvaluatedKey' not in response:
+                break
+
+            # Continue to next page
+            query_params['ExclusiveStartKey'] = response['LastEvaluatedKey']
+
+        # Trim to requested limit
+        result_items = all_items[:limit]
+
+        result = {
+            'items': result_items,
+            'count': len(result_items),
+            'pagesScanned': pages_scanned
+        }
+
+        # Return cursor for pagination if there are more results
+        # Cursor is the last returned item's key, allowing us to continue from there
+        if len(all_items) > limit or 'LastEvaluatedKey' in response:
+            if result_items:
+                last_item = result_items[-1]
+                result['lastKey'] = {
+                    'athleteId': last_item['athleteId'],
+                    'activityId': last_item['activityId']
+                }
+
+    else:
+        # Normal query without search - single page
+        response = activities_table.query(**query_params)
+        print(f"[DEBUG] Query returned {len(response['Items'])} items")
+
+        result = {
+            'items': response['Items'],
+            'count': len(response['Items'])
+        }
+
+        # Include LastEvaluatedKey if there are more items
+        if 'LastEvaluatedKey' in response:
+            result['lastKey'] = response['LastEvaluatedKey']
+
+    # Apply client-side sorting only if we didn't use a GSI for sorting
+    # If we used a composite sort GSI or date sort, the results are already sorted by DynamoDB
+    used_native_sort = use_composite_sort or sort_condition in ['dateDesc', 'dateAsc']
+    if sort_condition and result['items'] and not used_native_sort:
+        result['items'] = sort_activities(result['items'], sort_condition)
 
     return result
 
@@ -432,6 +682,9 @@ def fetch_activities():
     activity_type = request.args.get('activity_type')
     before_date = request.args.get('before_date')
     after_date = request.args.get('after_date')
+    has_achievements = request.args.get('has_achievements', 'false').lower() == 'true'
+    search = request.args.get('search', '').strip()
+    sort_condition = request.args.get('sort_condition', '').strip()
 
     limit = request.args.get('limit', 50, type=int)
     last_key_json = request.args.get('lastKey')
@@ -444,7 +697,9 @@ def fetch_activities():
         except json.JSONDecodeError:
             return jsonify({'error': 'Invalid lastKey format'}), 400
 
-    r = fetch_activities_req(srg_athlete_id, activity_type=activity_type, limit=limit, last_key=last_key, before_date=before_date, after_date=after_date)
+    print(f"[DEBUG] fetch_activities called with: athlete={srg_athlete_id}, type={activity_type}, limit={limit}, has_achievements={has_achievements}, sort={sort_condition}")
+    r = fetch_activities_req(srg_athlete_id, activity_type=activity_type, limit=limit, last_key=last_key, before_date=before_date, after_date=after_date, has_achievements=has_achievements, search=search, sort_condition=sort_condition)
+    print(f"[DEBUG] fetch_activities returning {len(r.get('items', []))} items")
     return jsonify(r)
 
 
@@ -635,27 +890,72 @@ def add_all_activities():
     return activities_to_return
 
 
+def create_sortable_value(value, desc=False, max_val=9999999999):
+    """
+    Create a zero-padded sortable string for lexicographical sorting.
+    For descending, invert the value.
+    """
+    try:
+        num_val = float(value) if value is not None else 0
+        if desc:
+            # Invert for descending sort
+            num_val = max_val - num_val
+        # Pad to 15 characters for consistent sorting
+        return f"{int(num_val * 100):015d}"
+    except (ValueError, TypeError):
+        return "000000000000000"
+
+
 def update_or_insert_item(entry, activities_table):
+    achievement_count = entry['achievement_count']
+    activity_type = entry['type']
+    has_achievements_str = 'true' if achievement_count > 0 else 'false'
+    activity_name = entry['name']
+
+    # Extract sortable values
+    distance = entry['distance']
+    moving_time = entry['moving_time']
+    average_speed = entry['average_speed']
+    total_elevation_gain = entry['total_elevation_gain']
+
+    # Create composite sort keys for efficient querying
+    # Format: "Type#HasAchievements#PaddedSortValue"
+    type_ach = f"{activity_type}#{has_achievements_str}"
+
     item = {
         'athleteId': str(entry['athlete']['id']),
         'activityId': str(entry['id']),
-        'name': entry['name'],
-        'type': entry['type'],
+        'name': activity_name,
+        'normalized_name': activity_name.lower(),
+        'type': activity_type,
         'start_date': entry['start_date'],
-        'distance': Decimal(str(entry['distance'])),
-        'moving_time': entry['moving_time'],
+        'distance': Decimal(str(distance)),
+        'moving_time': moving_time,
         'elapsed_time': entry['elapsed_time'],
-        'average_speed': Decimal(str(entry['average_speed'])),
+        'average_speed': Decimal(str(average_speed)),
         'max_speed': Decimal(str(entry['max_speed'])),
         'elev_high': Decimal(str(entry['elev_high'])) if 'elev_high' in entry else None,
         'elev_low': Decimal(str(entry['elev_low'])) if 'elev_low' in entry else None,
-        'total_elevation_gain': Decimal(str(entry['total_elevation_gain'])),
+        'total_elevation_gain': Decimal(str(total_elevation_gain)),
         'average_heartrate': Decimal(str(entry['average_heartrate'])) if 'average_heartrate' in entry else None,
         'max_heartrate': Decimal(str(entry['max_heartrate'])) if 'max_heartrate' in entry else None,
         'location_city': entry['location_city'],
         'location_state': entry['location_state'],
         'location_country': entry['location_country'],
-        'achievement_count': entry['achievement_count'],
+        'achievement_count': achievement_count,
+        'has_achievements': has_achievements_str,
+        'type_achievements': f"{activity_type}#{has_achievements_str}",
+        # Composite sort keys
+        'type_ach_speed_desc': f"{type_ach}#{create_sortable_value(average_speed, desc=True)}",
+        'type_ach_speed_asc': f"{type_ach}#{create_sortable_value(average_speed, desc=False)}",
+        'type_ach_distance_desc': f"{type_ach}#{create_sortable_value(distance, desc=True)}",
+        'type_ach_distance_asc': f"{type_ach}#{create_sortable_value(distance, desc=False)}",
+        'type_ach_duration_desc': f"{type_ach}#{create_sortable_value(moving_time, desc=True)}",
+        'type_ach_duration_asc': f"{type_ach}#{create_sortable_value(moving_time, desc=False)}",
+        'type_ach_elevation_desc': f"{type_ach}#{create_sortable_value(total_elevation_gain, desc=True)}",
+        'type_ach_elevation_asc': f"{type_ach}#{create_sortable_value(total_elevation_gain, desc=False)}",
+        'type_ach_achievement_desc': f"{type_ach}#{create_sortable_value(achievement_count, desc=True, max_val=999)}",
+        'type_ach_achievement_asc': f"{type_ach}#{create_sortable_value(achievement_count, desc=False, max_val=999)}",
         'kudos_count': entry['kudos_count'],
         'comment_count': entry['comment_count'],
         'pr_count': entry['pr_count']

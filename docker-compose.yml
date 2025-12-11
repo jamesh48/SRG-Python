@@ -32,6 +32,7 @@ services:
       - LOCALSTACK_ENDPOINT=http://localstack:4566
       - USE_LOCALSTACK=${USE_LOCALSTACK}
       - FLASK_ENVIRONMENT=development
+      - FLASK_DEBUG=1
     depends_on:
       - localstack
     networks:

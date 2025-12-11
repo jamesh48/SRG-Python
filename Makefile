@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs logs-app logs-localstack clean rebuild shell shell-localstack health setup-tables test stop
+.PHONY: help build up down restart logs logs-app logs-localstack clean rebuild shell shell-localstack health setup-tables recreate-activities test stop
 
 # Default target
 help:
@@ -19,6 +19,7 @@ help:
 	@echo "  make shell-localstack - Open shell in localstack container"
 	@echo "  make health         - Check app health endpoint"
 	@echo "  make setup-tables   - Manually run setup_localstack.py"
+	@echo "  make recreate-activities - Recreate activities table with new GSIs"
 	@echo "  make clean          - Stop containers and remove volumes"
 	@echo "  make test           - Run tests"
 	@echo ""
@@ -88,6 +89,12 @@ health:
 # Manually setup tables (if needed)
 setup-tables:
 	docker-compose exec app python3 setup_localstack.py
+
+# Recreate activities table with new GSIs
+recreate-activities:
+	@echo "Recreating activities table with new GSIs..."
+	docker-compose exec app python3 recreate_activities_table.py
+	@echo "Done! Remember to re-import your activities data with /srg/addAllActivities"
 
 # Run tests
 test:
